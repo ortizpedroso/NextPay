@@ -1,0 +1,6 @@
+{
+  "name": "NexusPay Whitelabel - Plataforma de Pagamentos",
+  "description": "Gateway de pagamentos transparente white-label com Pix D+0, links de pagamento, catálogo de produtos e conciliação bancária automatizada.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
