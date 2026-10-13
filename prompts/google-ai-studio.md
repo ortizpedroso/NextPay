@@ -21,7 +21,8 @@ Configure no painel **Secrets** do AI Studio, antes da Fase 3:
 `NEXTPAY_WALLET_ID` (o walletId da conta raiz, que recebe a comissão do NextPay).
 
 Ordem completa: Contexto mestre → Fase 0 → correção da Fase 0 (`audits/fase-0.md`) → Fase 1 →
-Fase 2 → Fase 3 → Fase 4 → Fase 5 → Fase 6 → Fase 7. Depois de cada fase vem a auditoria e, se
+Fase 2 → Fase 3 → Fase 4 → Fase 5 → Fase 6 → Fase 7 → Fase 8 (notas fiscais, só depois de decidir
+entre Asaas e API externa). Depois de cada fase vem a auditoria e, se
 necessário, o prompt de correção.
 
 ---
@@ -57,7 +58,8 @@ MODELO DE NEGÓCIO (white-label sobre o Asaas)
   DELE. A chave da conta raiz só cria subcontas e consulta dados da plataforma.
 - O NextPay ganha dinheiro de duas formas: (a) comissão sobre cada venda, enviada para a carteira
   da conta raiz (NEXTPAY_WALLET_ID) pelo split de pagamento do Asaas; (b) preço próprio dos
-  serviços sob demanda (Fase 7), acima do custo cobrado pelo Asaas.
+  serviços sob demanda (Fase 7): o preço ao lojista é SEMPRE o custo cobrado pelo Asaas + R$ 0,49
+  (49 centavos) por uso.
 - Nome do produto: escreva sempre exatamente "NextPay" em todo texto visível ao usuário. Em nomes
   de código siga a convenção da linguagem (nextpay, NEXTPAY_...).
 
@@ -300,7 +302,8 @@ FASE 4 — Checkout público.
 5. Confirmação em tempo real: a página consulta GET /api/public/charges/:id/status a cada 5 s
    (pare após pagamento ou expiração) e mostra a tela de sucesso só quando o webhook tiver
    confirmado. O cronômetro reflete a expiração real do Pix. O botão "Simular pagamento" só
-   aparece quando ASAAS_ENV=sandbox.
+   aparece quando ASAAS_ENV=sandbox e usa a API "Ações em sandbox" do Asaas para confirmar o
+   pagamento de verdade no sandbox (o status muda pelo webhook, não pelo front).
 6. Botão do WhatsApp abre wa.me com o número real do vendedor e mensagem pré-preenchida.
 7. Cobranças & Links: o link gerado é a URL real `${APP_URL}/pagar/:slug`; copiar e compartilhar
    no WhatsApp usam essa URL. Produtos ganham o mesmo link.
@@ -374,45 +377,91 @@ Critério de pronto: CI verde com typecheck, lint, testes unitários, de integra
 
 ---
 
-## Fase 7 — Serviços sob demanda (Serasa, notas fiscais, pague contas, antecipação)
+## Fase 7 — Serviços sob demanda (Serasa, pague contas, recarga, antecipação)
 
 ```text
-FASE 7 — Serviços sob demanda revendidos pelo NextPay. Confira cada endpoint, campo, regra e
-tarifa na documentação oficial do Asaas (docs.asaas.com) antes de implementar; não invente nada.
+FASE 7 — Serviços sob demanda revendidos pelo NextPay. Use a referência oficial do Asaas
+(https://docs.asaas.com/reference) para cada endpoint, campo, regra e tarifa; não invente nada.
+Seções da documentação usadas nesta fase: "Consulta Serasa" (Credit Bureau Report),
+"Negativações" (Payment Dunning), "Pagamento de contas" (Bill Payment), "Recargas de celular",
+"Antecipações" (Anticipations), "Transferências" e "Webhooks".
 Todas as chamadas usam `asaasFor(conta do lojista)`.
 
-1. Tarifação própria:
-   - modelo ServicePrice (serviço, custo Asaas em centavos, preço NextPay em centavos, ativo),
-     editável só por administrador;
-   - modelo ServiceUsage (conta, serviço, referência no Asaas, custo, preço cobrado, status, data);
-   - antes de executar qualquer serviço, mostre ao lojista o preço e peça confirmação;
-   - verifique o saldo da subconta; sem saldo suficiente, recuse com mensagem clara;
-   - após o sucesso no Asaas, cobre a diferença (preço NextPay − custo Asaas) transferindo esse
-     valor da subconta para NEXTPAY_WALLET_ID (transferência interna entre contas Asaas) e grave
-     o ServiceUsage. Se o serviço falhar, não cobre nada;
-   - tela "Serviços" com o histórico de uso e o total gasto no mês.
-2. Consulta Serasa: o lojista informa CPF/CNPJ e vê o relatório retornado pelo Asaas. Guarde o
-   resultado (o lojista pode reabrir sem pagar de novo) e registre o aceite de uso dos dados
-   conforme a LGPD.
-3. Negativação Serasa: botão "Negativar" nas cobranças vencidas que cumprem as regras do Asaas
-   (ex.: conta PJ aprovada, vencida há pelo menos o prazo mínimo). Mostre o status da negativação
-   (webhook) e permita cancelar. Quando a cobrança for paga, oriente/execute a baixa.
-4. Notas fiscais de serviço (NFS-e): tela de configuração fiscal da subconta (dados municipais
-   exigidos pelo Asaas), emissão de nota a partir de uma cobrança paga (manual ou automática),
-   cancelamento, download do PDF/XML e status via webhook.
+1. Regra de preço (fixa): preço ao lojista = custo cobrado pelo Asaas pelo serviço + 49 centavos.
+   - Constante NEXTPAY_SERVICE_MARKUP_CENTS = 49 em shared/pricing.ts, com função
+     `servicePrice(asaasCostCents) => asaasCostCents + 49` e testes.
+   - Modelo ServiceCost (serviço, custo Asaas em centavos, atualizado em) editável só por
+     administrador; o preço exibido é sempre calculado pela função acima, nunca digitado.
+   - Modelo ServiceUsage (conta, serviço, referência no Asaas, custo Asaas, markup, preço total,
+     status, data).
+2. Fluxo de cobrança de todo serviço:
+   a. mostre ao lojista "Custo do serviço: R$ X" (já com os R$ 0,49 somados) e peça confirmação;
+   b. confira o saldo da subconta (custo Asaas + 0,49); sem saldo, recuse com mensagem clara;
+   c. execute o serviço no Asaas (o Asaas debita o custo dele da subconta);
+   d. se der certo, transfira os 49 centavos da subconta para NEXTPAY_WALLET_ID (transferência
+      interna entre contas Asaas) e grave o ServiceUsage; se o serviço falhar, não cobre nada;
+   e. se a transferência dos 49 centavos falhar, grave o ServiceUsage como "markup pendente" e
+      tente de novo depois (job de reprocessamento), sem cobrar duas vezes.
+   - Tela "Serviços" com histórico de uso, custo de cada item e total gasto no mês.
+3. Consulta Serasa: o lojista informa CPF/CNPJ e vê o relatório retornado pelo Asaas. Guarde o
+   resultado (reabrir não cobra de novo) e registre o aceite de uso dos dados conforme a LGPD.
+4. Negativação Serasa: botão "Negativar" nas cobranças vencidas que cumprem as regras do Asaas
+   (ex.: conta PJ aprovada, vencida há pelo menos o prazo mínimo). Status via webhook, opção de
+   cancelar, e baixa quando a cobrança for paga.
 5. Pague Contas: o lojista informa a linha digitável, o servidor consulta os dados do boleto no
    Asaas, mostra beneficiário, valor e vencimento para confirmação e paga (na hora ou agendado)
    com o saldo da subconta. Exija confirmação de senha. Status via webhook.
-6. Antecipação de recebíveis: simule a antecipação de cobranças de cartão/boleto elegíveis (valor
-   líquido e taxa vindos do Asaas), confirme com senha e acompanhe o status via webhook.
-7. Menu: Serasa, Notas Fiscais, Pague Contas e Antecipações passam de "Em breve" para ativos.
-   Cartão NextPay, Open Finance, Vendas Físicas (Tap), loja de apps e Benefícios continuam
-   "Em breve" (não fazem parte deste projeto).
-8. Testes: cálculo de preço e markup, recusa sem saldo, nenhuma cobrança quando o serviço falha,
-   idempotência dos webhooks desses serviços.
+6. Recarga de celular: operadora, número e valor; confirmação de senha; status via webhook.
+7. Antecipação de recebíveis: simule a antecipação de cobranças elegíveis (valor líquido e taxa
+   vindos do Asaas), confirme com senha e acompanhe o status via webhook. A taxa de antecipação
+   do Asaas também recebe os R$ 0,49 por operação.
+8. Menu: Serasa, Pague Contas, Recarga de Celular e Antecipações passam de "Em breve" para
+   ativos. Notas Fiscais continua "Em breve" (Fase 8). Cartão NextPay, Open Finance, Vendas
+   Físicas (Tap), loja de apps e Benefícios continuam "Em breve".
+9. Testes: função de preço (custo + 49), recusa sem saldo, nenhuma cobrança quando o serviço
+   falha, reprocessamento do markup sem cobrança dupla, idempotência dos webhooks.
 
-Critério de pronto: no sandbox, executar uma consulta Serasa, emitir uma nota, pagar um boleto e
-simular uma antecipação, vendo cada ServiceUsage e a transferência da margem para a conta NextPay.
+Critério de pronto: no sandbox, executar uma consulta Serasa, pagar um boleto, fazer uma recarga e
+simular uma antecipação, vendo em cada ServiceUsage o custo Asaas + R$ 0,49 e a transferência dos
+49 centavos para a carteira do NextPay.
+```
+
+---
+
+## Fase 8 — Notas fiscais (NFS-e) — somente após a decisão Asaas × API externa
+
+Ainda não decidido se as notas serão emitidas pelo Asaas (R$ 0,49 de tabela por nota + R$ 0,49 do
+NextPay) ou por uma API externa de NFS-e. Antes de usar esta fase, revise o texto com o Claude para
+a opção escolhida. Versão para emissão pelo Asaas:
+
+```text
+FASE 8 — Notas fiscais de serviço (NFS-e) pelo Asaas. Siga o guia oficial "Notas fiscais"
+(https://docs.asaas.com), seções "Configurar informações fiscais" e "Emitindo notas fiscais de
+serviço", inclusive "Adequando sua integração à Reforma Tributária". Use `asaasFor(conta)`.
+
+1. Configuração fiscal da subconta (tela /app/notas/configuracao):
+   a. GET /v3/fiscalInfo/municipalOptions para descobrir o que a prefeitura exige;
+   b. monte o formulário dinamicamente a partir da resposta: authenticationType define as
+      credenciais pedidas (USER_AND_PASSWORD → username e password; TOKEN → accessToken;
+      CERTIFICATE → certificateFile e certificatePassword); usesSpecialTaxRegimes → campo
+      specialTaxRegime com opções de specialTaxRegimesList; usesServiceListItem → serviceListItem;
+   c. mostre os textos dos campos "...Help" como ajuda abaixo de cada campo (podem vir null) e
+      NUNCA os envie de volta;
+   d. POST /v3/fiscalInfo com email, municipalInscription, simplesNacional, cnae, rpsSerie,
+      rpsNumber, as credenciais do método retornado e, opcionalmente,
+      serviceProvisionCityDefaultType (MY_ACCOUNT_CITY | CUSTOMER_CITY |
+      CUSTOMER_CITY_WHEN_ISS_IS_RETAINED);
+   e. GET /v3/fiscalInfo para conferir (404 = não configurado). Emissão fica bloqueada até a
+      configuração existir.
+   Senhas, tokens e certificados da prefeitura só trafegam para o Asaas; não os guarde no banco
+   do NextPay.
+2. Emissão a partir de uma cobrança paga (manual ou automática), com o serviço municipal
+   escolhido na lista retornada pelo Asaas; cancelamento só se supportsCancellation for true;
+   download do PDF/XML; status via webhook.
+3. Cobrança: cada nota segue a regra da Fase 7 (custo Asaas + R$ 0,49, com ServiceUsage).
+4. Menu: Notas Fiscais passa a ativo.
+
+Critério de pronto: no sandbox, configurar as informações fiscais, emitir e consultar uma nota.
 ```
 
 ---

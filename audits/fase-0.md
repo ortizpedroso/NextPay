@@ -24,7 +24,7 @@ Commit auditado: `655309b` (`main`) · Resultado: **reprovada, com correções**
    de 6 para 19 itens (Serasa, Open Finance, Pague Contas, Cartão NextPay, Notas Fiscais, Vendas Físicas,
    "Flapp Store", Benefícios etc.). Essas telas simulam sucesso com `setTimeout` + toast
    ("Consulta Serasa concluída", "Boleto agendado para liquidação", "Módulo ativado"), o que viola a
-   regra 8 (nenhum botão fingindo funcionar). "Flapp Store" parece ser nome de outra marca.
+   regra 8 (nenhum botão fingindo funcionar). "Flapp Store" é o nome da loja de parceiros do próprio Asaas e não deve aparecer na marca NextPay.
 3. **`parseBRLToCents` aceita entradas inválidas sem erro:**
    - `"0,555"` → 55 e `"R$ 1.500,999"` → 150099 (corta casas decimais em silêncio)
    - `"1R2,00"` → 1200 e `"1-2"` → 1200 (remove letras R, `$` e `-` de qualquer posição)
@@ -57,10 +57,11 @@ não esteja na lista. Ao final, para cada item, diga o arquivo e o que mudou.
    - Apague AnticipationView, SalesSimulatorView e NextPayServicesView e todo código que simula
      sucesso com setTimeout + toast nessas funções.
    - No menu, mantenha os itens abaixo VISÍVEIS, porém DESABILITADOS, com o selo "Em breve" e sem
-     abrir tela: Antecipações, Consulta Serasa & Negativação, Notas Fiscais, Pague Contas (serão
-     implementados na Fase 7); Simular Venda, Vendas Físicas (Tap), Cartão NextPay, Open Finance,
-     Benefícios & Indique e a loja de aplicativos (fora do escopo atual).
-   - Remova o nome "Flapp" de todo o código; a loja de aplicativos se chama "Loja NextPay".
+     abrir tela: Antecipações, Consulta Serasa & Negativação, Pague Contas, Recarga de Celular
+     (Fase 7); Notas Fiscais (Fase 8); Simular Venda, Vendas Físicas (Tap), Cartão NextPay,
+     Open Finance, Benefícios & Indique e a loja de aplicativos (fora do escopo atual).
+   - "Flapp Store" é a loja de parceiros do próprio Asaas e não deve aparecer na marca do
+     NextPay: remova o nome "Flapp" de todo o código; o item do menu se chama "Loja NextPay".
    - Mantenha ClientsView, mas o botão de novo cliente fica desabilitado com "Em breve" até a
      Fase 1 (que cria /api/customers).
    - Nenhum toast de sucesso pode ser disparado sem uma operação real.
@@ -85,6 +86,7 @@ não esteja na lista. Ao final, para cada item, diga o arquivo e o que mudou.
 
 7. No README, remova afirmações que o produto ainda não cumpre (conformidade com o Banco Central,
    liquidação rápida etc.) e descreva o estado real: protótipo em evolução por fases.
+   Inclua no README a regra de preço dos serviços sob demanda: custo do Asaas + R$ 0,49 por uso.
 
 8. Nome: em todo texto visível ao usuário (telas, títulos, README, index.html, metadata.json,
    comprovantes) o nome é exatamente "NextPay". Nomes de código seguem a convenção
@@ -126,7 +128,8 @@ MODELO DE NEGÓCIO (white-label sobre o Asaas)
   DELE. A chave da conta raiz só cria subcontas e consulta dados da plataforma.
 - O NextPay ganha dinheiro de duas formas: (a) comissão sobre cada venda, enviada para a carteira
   da conta raiz (NEXTPAY_WALLET_ID) pelo split de pagamento do Asaas; (b) preço próprio dos
-  serviços sob demanda (Fase 7), acima do custo cobrado pelo Asaas.
+  serviços sob demanda (Fase 7): o preço ao lojista é SEMPRE o custo cobrado pelo Asaas + R$ 0,49
+  (49 centavos) por uso.
 - Nome do produto: escreva sempre exatamente "NextPay" em todo texto visível ao usuário. Em nomes
   de código siga a convenção da linguagem (nextpay, NEXTPAY_...).
 

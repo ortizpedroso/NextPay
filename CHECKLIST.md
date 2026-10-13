@@ -72,7 +72,8 @@ conectar integrações) apenas exibem um toast ou um `setTimeout` simulando suce
 ### 4b. Modelo white-label e serviços sob demanda (Asaas)
 - [ ] Uma subconta Asaas por lojista (BaaS), com chave de API cifrada no banco
 - [ ] Comissão do NextPay em cada venda via split para a carteira da conta raiz
-- [ ] Serviços revendidos com preço próprio: consulta e negativação Serasa, notas fiscais (NFS-e), pague contas, antecipação
+- [ ] Serviços sob demanda com preço = custo Asaas + R$ 0,49: consulta e negativação Serasa, pague contas, recarga de celular, antecipação
+- [ ] Notas fiscais (NFS-e): decidir entre Asaas e API externa antes de implementar (fase final)
 - [ ] Fora do escopo por enquanto (ficam "Em breve"): Cartão NextPay, Open Finance, Vendas Físicas (Tap), loja de apps, benefícios
 
 ### 5. Funcionalidades incompletas por tela
