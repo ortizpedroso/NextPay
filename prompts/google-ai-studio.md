@@ -67,7 +67,7 @@ Responda apenas "Contexto entendido" e aguarde a Fase 0.
 ## Fase 0 — Saneamento do projeto
 
 ```text
-FASE 0 — Saneamento. Não mude nenhuma tela nesta fase.
+FASE 0 — Saneamento. Não mude o layout nem o comportamento das telas nesta fase (só o nome).
 
 1. Nome do produto: o nome correto é NextPay. Substitua TODAS as ocorrências de "NexusPay",
    "Nexus" e "nexuspay" no projeto (index.html, metadata.json, textos das telas, logo/alt do
