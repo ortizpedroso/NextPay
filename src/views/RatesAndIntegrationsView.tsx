@@ -1,11 +1,5 @@
 import React, { useState } from 'react';
-import {
-  INITIAL_WEBHOOK_LOGS,
-  WebhookLog,
-  FEE_TABLE,
-  ANTICIPATION_RATES,
-  NEXTPAY_ACCOUNT,
-} from '../data/mockData';
+import { INITIAL_WEBHOOK_LOGS, WebhookLog, NEXTPAY_ACCOUNT } from '../data/mockData';
 
 interface RatesAndIntegrationsViewProps {
   onShowToast: (msg: string) => void;
@@ -17,7 +11,6 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
   onOpenSimulator,
 }) => {
   const [environment, setEnvironment] = useState<'prod' | 'sandbox'>('prod');
-  const [passBuyerInstallment, setPassBuyerInstallment] = useState(false);
   const [isTokenVisible, setIsTokenVisible] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
   const [isTestingLatency, setIsTestingLatency] = useState(false);
@@ -26,14 +19,13 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
   // Webhook inspector
   const [selectedLog, setSelectedLog] = useState<WebhookLog | null>(null);
 
-  // Bank edit state
-  const [isEditingBank, setIsEditingBank] = useState(false);
-  const [pixKey, setPixKey] = useState(NEXTPAY_ACCOUNT.pixKey);
-  const [bankAgency, setBankAgency] = useState(NEXTPAY_ACCOUNT.agency);
-  const [bankAccount, setBankAccount] = useState(NEXTPAY_ACCOUNT.account);
+  // Bank display
+  const pixKey = NEXTPAY_ACCOUNT.pixKey;
+  const bankAgency = NEXTPAY_ACCOUNT.agency;
+  const bankAccount = NEXTPAY_ACCOUNT.account;
 
-  const prodToken = '$aact_YTU1YTE0M2M6N2NmNy00MGI0LWE2ZjQtZDAwZDE4OGE5NzM2XzAxOTIwMzk0';
-  const sandboxToken = '$aact_sbx_ZTM1Mjg3NmEtYjlmMC00MjExLTk5MDAtOGU1MDYxNDcxYmRlXzAyMDE';
+  const prodToken = 'nextpay_live_7cf740b4a6f4d00d188a9736';
+  const sandboxToken = 'nextpay_test_b9f0421199008e5061471bde';
   const currentToken = environment === 'prod' ? prodToken : sandboxToken;
 
   const handleTestLatency = () => {
@@ -42,7 +34,6 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
       const ping = Math.floor(Math.random() * 25) + 85;
       setCurrentLatency(ping);
       setIsTestingLatency(false);
-      onShowToast(`Latência da API NextPay (Gateway Central): ${ping}ms • Conexão Estável!`);
     }, 500);
   };
 
@@ -819,15 +810,17 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                   <div className="flex items-center gap-space-xs self-end sm:self-center">
                     <button
                       type="button"
-                      onClick={() => onShowToast('Documentação WooCommerce aberta')}
-                      className="px-space-sm py-1.5 bg-surface-container-lowest hover:bg-surface-container-high rounded text-on-surface-variant font-label-md text-label-md transition-colors flex items-center gap-1 border border-surface-container"
+                      disabled
+                      title="Em breve"
+                      className="px-space-sm py-1.5 bg-surface-container text-on-surface-variant/50 rounded font-label-md text-label-md cursor-not-allowed flex items-center gap-1 border border-surface-container"
                     >
                       <span className="material-symbols-outlined text-[16px]">menu_book</span> Docs
                     </button>
                     <button
                       type="button"
-                      onClick={() => onShowToast('Painel de configuração WooCommerce carregado')}
-                      className="px-space-md py-1.5 bg-surface-container-high hover:bg-surface-variant rounded text-on-surface font-label-md text-label-md font-semibold transition-colors flex items-center gap-1"
+                      disabled
+                      title="Em breve"
+                      className="px-space-md py-1.5 bg-surface-container text-on-surface-variant/50 rounded font-label-md text-label-md font-semibold cursor-not-allowed flex items-center gap-1"
                     >
                       <span className="material-symbols-outlined text-[16px]">tune</span> Configurar
                     </button>
@@ -859,8 +852,9 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                   <div className="flex items-center gap-space-xs self-end sm:self-center">
                     <button
                       type="button"
-                      onClick={() => onShowToast('Exibindo logs de sincronização Shopify')}
-                      className="px-space-md py-1.5 bg-surface-container-high hover:bg-surface-variant rounded text-on-surface font-label-md text-label-md font-semibold transition-colors flex items-center gap-1"
+                      disabled
+                      title="Em breve"
+                      className="px-space-md py-1.5 bg-surface-container text-on-surface-variant/50 rounded font-label-md text-label-md font-semibold cursor-not-allowed flex items-center gap-1"
                     >
                       <span className="material-symbols-outlined text-[16px]">sync_alt</span> Logs
                     </button>
@@ -892,11 +886,15 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                   <div className="flex items-center gap-space-xs self-end sm:self-center">
                     <button
                       type="button"
-                      onClick={() => onShowToast('Nuvemshop conectada com sucesso!')}
-                      className="px-space-md py-1.5 bg-primary text-on-primary hover:bg-primary-container rounded font-label-md text-label-md font-semibold transition-colors flex items-center gap-1 shadow-sm"
+                      disabled
+                      title="Em breve"
+                      className="px-space-md py-1.5 bg-surface-container-high text-on-surface-variant/60 rounded font-label-md text-label-md font-semibold cursor-not-allowed flex items-center gap-1"
                     >
                       <span className="material-symbols-outlined text-[16px]">bolt</span> Conectar
                       com 1 Clique
+                      <span className="text-[9px] uppercase px-1 rounded bg-surface-container-highest text-outline font-semibold">
+                        Em breve
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -982,14 +980,10 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                     Protegido por Autenticação em Duas Etapas (2FA NextPay Shield)
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => onShowToast('Conta bancária homologada pelo NextPay')}
-                  className="text-primary hover:text-primary-container font-label-md text-label-md font-semibold flex items-center gap-1 transition-colors"
-                >
+                <span className="text-secondary font-label-md text-label-md font-semibold flex items-center gap-1">
                   <span className="material-symbols-outlined text-[16px]">verified</span> Conta
                   Homologada
-                </button>
+                </span>
               </div>
             </div>
           </div>
@@ -1078,8 +1072,9 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                   />
                   <button
                     type="button"
-                    onClick={() => onShowToast('URL do webhook pronta para edição')}
-                    className="px-space-sm py-1 bg-surface-container-lowest text-primary rounded font-label-sm text-label-sm font-semibold hover:bg-surface-container-high transition-colors border border-surface-container"
+                    disabled
+                    title="Em breve"
+                    className="px-space-sm py-1 bg-surface-container text-on-surface-variant/50 rounded font-label-sm text-label-sm font-semibold cursor-not-allowed border border-surface-container"
                   >
                     Editar
                   </button>

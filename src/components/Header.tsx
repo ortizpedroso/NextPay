@@ -13,10 +13,13 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   onOpenNewCharge,
   onOpenNewLink,
-  onOpenSimulator,
+  _onOpenSimulator,
   onOpenCheckoutPreview,
   onToggleMobileSidebar,
-  onShowToast,
+  _onShowToast,
+}: HeaderProps & {
+  _onOpenSimulator?: HeaderProps['onOpenSimulator'];
+  _onShowToast?: HeaderProps['onShowToast'];
 }) => {
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -71,7 +74,6 @@ export const Header: React.FC<HeaderProps> = ({
                   onClick={() => {
                     setCurrentOrg(org);
                     setShowOrgDropdown(false);
-                    onShowToast(`Subconta alterada para: ${org}`);
                   }}
                   className={`w-full text-left px-3 py-2 rounded-lg text-body-sm transition-colors flex items-center justify-between ${
                     currentOrg === org
@@ -91,30 +93,32 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* NextPay Live Infrastructure Badge */}
+        {/* NextPay Badge */}
         <div className="hidden xl:flex items-center gap-space-sm px-space-md py-1 rounded-full bg-surface-container-lowest border border-surface-container shadow-[0_1px_4px_rgba(0,0,0,0.03)]">
           <div className="relative flex h-2.5 w-2.5 items-center justify-center">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-secondary-fixed opacity-75"></span>
             <span className="relative inline-flex h-2 w-2 rounded-full bg-secondary"></span>
           </div>
           <span className="font-label-md text-[12px] text-on-surface-variant">
-            <strong className="text-secondary font-semibold">Gateway Ativo</strong> • Liquidação
-            Transparente D+0
+            <strong className="text-secondary font-semibold">Gateway Ativo</strong> • NextPay
+            Whitelabel
           </span>
         </div>
       </div>
 
-      {/* Action buttons requested by user */}
+      {/* Action buttons */}
       <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* Simular Venda (Prominent Button) */}
+        {/* Simular Venda (Disabled with Em breve) */}
         <button
           type="button"
-          onClick={onOpenSimulator}
-          className="hidden md:flex items-center gap-1 px-3 py-2 rounded-lg bg-secondary-container/30 hover:bg-secondary-container/50 text-secondary font-label-md text-[12px] font-bold transition-all border border-secondary/30"
-          title="Calcular spread de 1% + R$ 0,49"
+          disabled
+          title="Em breve"
+          className="hidden md:flex items-center gap-1 px-3 py-2 rounded-lg bg-surface-container text-on-surface-variant/70 font-label-md text-[12px] font-semibold cursor-not-allowed opacity-75 border border-surface-container-highest"
         >
           <span className="material-symbols-outlined text-[18px]">calculate</span>
           <span>Simular Venda</span>
+          <span className="text-[9px] uppercase px-1 rounded bg-surface-container-highest text-outline">
+            Em breve
+          </span>
         </button>
 
         {/* Criar Link de Pagamento */}
@@ -161,10 +165,6 @@ export const Header: React.FC<HeaderProps> = ({
             className="relative p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors"
           >
             <span className="material-symbols-outlined text-[22px]">notifications</span>
-            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
-            </span>
           </button>
 
           {showNotifications && (
@@ -172,9 +172,6 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="flex items-center justify-between pb-2 border-b border-surface-container">
                 <span className="font-title-md text-title-md text-on-surface font-semibold">
                   Notificações NextPay
-                </span>
-                <span className="font-label-sm text-secondary bg-secondary-container/40 px-2 py-0.5 rounded-full font-bold text-[10px]">
-                  D+0 Live
                 </span>
               </div>
               <div className="py-2 flex flex-col gap-2 max-h-64 overflow-y-auto">
@@ -184,26 +181,12 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                   <div className="flex flex-col text-left">
                     <span className="font-title-md text-[12px] font-semibold text-on-surface">
-                      Spread de R$ 35,49 Creditado
+                      Transação Registrada
                     </span>
                     <span className="font-body-sm text-[11px] text-on-surface-variant">
-                      Lucro da transação #PAY-89210 depositado na sua conta
+                      Cobrança emitida via gateway NextPay
                     </span>
-                    <span className="text-[10px] text-outline mt-0.5">Há 2 minutos</span>
-                  </div>
-                </div>
-                <div className="p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors flex items-start gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-primary mt-0.5">
-                    account_balance
-                  </span>
-                  <div className="flex flex-col text-left">
-                    <span className="font-title-md text-[12px] font-semibold text-on-surface">
-                      Transferência Automática
-                    </span>
-                    <span className="font-body-sm text-[11px] text-on-surface-variant">
-                      Conta 7342797-3 atualizada
-                    </span>
-                    <span className="text-[10px] text-outline mt-0.5">Hoje às 08:30</span>
+                    <span className="text-[10px] text-outline mt-0.5">Hoje</span>
                   </div>
                 </div>
               </div>
@@ -250,29 +233,17 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="py-1">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowUserDropdown(false);
-                    onOpenSimulator();
-                  }}
-                  className="w-full text-left px-3 py-2 text-body-sm text-on-surface hover:bg-surface-container rounded-lg flex items-center gap-2"
+                  disabled
+                  title="Em breve"
+                  className="w-full text-left px-3 py-2 text-body-sm text-on-surface-variant/60 cursor-not-allowed flex items-center justify-between"
                 >
-                  <span className="material-symbols-outlined text-[16px] text-secondary">
-                    calculate
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[16px]">calculate</span>
+                    <span>Simulador de Taxas</span>
+                  </div>
+                  <span className="text-[9px] uppercase px-1 rounded bg-surface-container-highest text-outline">
+                    Em breve
                   </span>
-                  <span>Simulador de Taxas</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowUserDropdown(false);
-                    onShowToast('Sessão segura autenticada via NextPay 2FA');
-                  }}
-                  className="w-full text-left px-3 py-2 text-body-sm text-on-surface hover:bg-surface-container rounded-lg flex items-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-[16px] text-primary">
-                    verified_user
-                  </span>
-                  <span>Segurança NextPay</span>
                 </button>
               </div>
             </div>

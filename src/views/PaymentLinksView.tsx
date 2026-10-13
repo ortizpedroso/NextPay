@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PaymentLink, Transaction, FEE_TABLE } from '../data/mockData';
+import { PaymentLink, Transaction } from '../data/mockData';
 
 interface PaymentLinksViewProps {
   paymentLinks: PaymentLink[];
@@ -13,12 +13,15 @@ interface PaymentLinksViewProps {
 
 export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   paymentLinks,
-  transactions,
+  _transactions,
   onAddPaymentLink,
   onOpenQrPix,
-  onOpenReceipt,
+  _onOpenReceipt,
   onOpenCheckoutWithLink,
   onShowToast,
+}: PaymentLinksViewProps & {
+  _transactions?: PaymentLinksViewProps['transactions'];
+  _onOpenReceipt?: PaymentLinksViewProps['onOpenReceipt'];
 }) => {
   // Generator state
   const [billingType, setBillingType] = useState<'avulsa' | 'recorrente'>('avulsa');
@@ -35,7 +38,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
 
   // Link filter state
   const [linkFilter, setLinkFilter] = useState<'all' | 'recorrente' | 'avulsa'>('all');
-  const [searchTable, setSearchTable] = useState('');
 
   // Calculate net pix estimate using new NextPay rate (R$ 2,48 fixo por cobrança)
   const numericAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.')) || 0;
@@ -45,16 +47,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const filteredLinks = paymentLinks.filter((link) => {
     if (linkFilter === 'all') return true;
     return link.type === linkFilter;
-  });
-
-  const filteredTransactions = transactions.filter((tx) => {
-    if (!searchTable) return true;
-    const q = searchTable.toLowerCase();
-    return (
-      tx.clientName.toLowerCase().includes(q) ||
-      tx.description.toLowerCase().includes(q) ||
-      tx.code.toLowerCase().includes(q)
-    );
   });
 
   const handleCreateLink = (e: React.FormEvent) => {
@@ -85,7 +77,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
     };
 
     onAddPaymentLink(newLink);
-    onShowToast(`Link de pagamento para "${newLink.title}" gerado com sucesso!`);
   };
 
   const handleCopyLink = (url: string) => {
@@ -98,7 +89,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
       `Olá! Segue o link seguro NextPay para acerto de "${link.title}" no valor de ${link.unitPriceFormatted}: ${link.url}`,
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
-    onShowToast('Janela do WhatsApp aberta para compartilhamento');
   };
 
   return (
@@ -602,18 +592,22 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
               {/* Action Buttons */}
               <div className="pt-space-md flex flex-col sm:flex-row items-center gap-space-sm">
                 <button
-                  type="submit"
-                  className="w-full flex-1 flex items-center justify-center gap-space-xs bg-primary text-on-primary hover:bg-primary-container px-space-lg py-space-md rounded-xl font-title-md text-title-md shadow-md transition-all font-semibold"
+                  type="button"
+                  disabled
+                  title="Em breve (Fase 2)"
+                  className="w-full flex-1 flex items-center justify-center gap-space-xs bg-surface-container-high text-on-surface-variant/70 cursor-not-allowed px-space-lg py-space-md rounded-xl font-title-md text-title-md shadow-none opacity-80 font-semibold"
                 >
                   <span className="material-symbols-outlined text-[20px]">bolt</span>
                   <span>Gerar Link & Ativar Notificações</span>
+                  <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
+                    Em breve
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setTitle('');
                     setAmount('0,00');
-                    onShowToast('Campos limpos');
                   }}
                   className="w-full sm:w-auto px-space-md py-space-md bg-surface-container-low hover:bg-surface-container-high text-on-surface rounded-xl font-title-md text-body-md transition-all border border-surface-container font-medium"
                 >

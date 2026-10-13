@@ -59,7 +59,7 @@ export interface WebhookLog {
   timeAgo: string;
   latencyMs: number;
   status: number;
-  payload: any;
+  payload: Record<string, unknown>;
 }
 
 export interface FeeStructure {

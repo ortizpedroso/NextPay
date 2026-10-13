@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { NEXTPAY_ACCOUNT } from '../data/mockData';
 
+interface NavItem {
+  id: string;
+  label: string;
+  icon: string;
+  disabled?: boolean;
+}
+
 interface SidebarProps {
   currentView: string;
   onNavigate: (view: string) => void;
@@ -18,39 +25,86 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const [showBalance, setShowBalance] = useState(true);
 
-  const mainNav = [
+  const mainNav: NavItem[] = [
     { id: 'dashboard', label: 'Início', icon: 'grid_view' },
     { id: 'clientes', label: 'Meus Clientes', icon: 'group' },
     { id: 'cobrancas-e-links', label: 'Cobranças', icon: 'receipt_long' },
     { id: 'links-pagamento', label: 'Links de Pagamento', icon: 'link' },
-    { id: 'simular-venda', label: 'Simular Venda', icon: 'calculate', highlight: true },
+    { id: 'simular-venda', label: 'Simular Venda', icon: 'calculate', disabled: true },
     { id: 'pix', label: 'Pix Instantâneo', icon: 'qr_code_2' },
     { id: 'produtos-e-servicos', label: 'Produtos & Serviços', icon: 'inventory_2' },
     { id: 'assinaturas', label: 'Assinaturas (Recorrência)', icon: 'autorenew' },
-    { id: 'vendas-fisicas', label: 'Vendas Físicas (Tap)', icon: 'contactless' },
+    { id: 'vendas-fisicas', label: 'Vendas Físicas (Tap)', icon: 'contactless', disabled: true },
   ];
 
-  const financialNav = [
-    { id: 'antecipacoes', label: 'Antecipações', icon: 'bolt' },
-    { id: 'cartao-nextpay', label: 'Cartão NextPay', icon: 'credit_card' },
-    { id: 'pague-contas', label: 'Pague Contas', icon: 'barcode_scanner' },
-    { id: 'notas-fiscais', label: 'Notas Fiscais', icon: 'description' },
-    { id: 'serasa', label: 'Consulta Serasa & Negativação', icon: 'policy' },
-    { id: 'open-finance', label: 'Open Finance', icon: 'account_tree' },
+  const financialNav: NavItem[] = [
+    { id: 'antecipacoes', label: 'Antecipações', icon: 'bolt', disabled: true },
+    { id: 'cartao-nextpay', label: 'Cartão NextPay', icon: 'credit_card', disabled: true },
+    { id: 'pague-contas', label: 'Pague Contas', icon: 'barcode_scanner', disabled: true },
+    { id: 'recarga-celular', label: 'Recarga de Celular', icon: 'smartphone', disabled: true },
+    { id: 'notas-fiscais', label: 'Notas Fiscais', icon: 'description', disabled: true },
+    {
+      id: 'serasa',
+      label: 'Consulta Serasa & Negativação',
+      icon: 'policy',
+      disabled: true,
+    },
+    { id: 'open-finance', label: 'Open Finance', icon: 'account_tree', disabled: true },
   ];
 
-  const toolsNav = [
+  const toolsNav: NavItem[] = [
     { id: 'configuracoes-de-taxas', label: 'Taxas & Prazos', icon: 'percent' },
     { id: 'integracoes-e-api', label: 'Integrações & API', icon: 'terminal' },
-    { id: 'flapp-store', label: 'Flapp Store (Apps)', icon: 'storefront' },
-    { id: 'beneficios', label: 'Meus Benefícios & Indique', icon: 'loyalty' },
+    { id: 'loja-nextpay', label: 'Loja NextPay', icon: 'storefront', disabled: true },
+    { id: 'beneficios', label: 'Benefícios & Indique', icon: 'loyalty', disabled: true },
   ];
 
-  const handleNav = (viewId: string) => {
-    onNavigate(viewId);
+  const handleNav = (item: NavItem) => {
+    if (item.disabled) return;
+    onNavigate(item.id);
     if (isOpenMobile) {
       onCloseMobile();
     }
+  };
+
+  const renderNavItem = (item: NavItem) => {
+    if (item.disabled) {
+      return (
+        <div
+          key={item.id}
+          className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left font-body-md text-xs text-on-surface-variant/50 cursor-not-allowed select-none opacity-60"
+          title="Em breve"
+          aria-disabled="true"
+        >
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
+            <span>{item.label}</span>
+          </div>
+          <span className="px-1.5 py-0.5 rounded text-[9px] bg-surface-container-high text-on-surface-variant/80 font-medium tracking-tight">
+            Em breve
+          </span>
+        </div>
+      );
+    }
+
+    const isActive = currentView === item.id;
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => handleNav(item)}
+        className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors font-body-md text-xs ${
+          isActive
+            ? 'bg-primary-container text-on-primary font-semibold shadow-xs'
+            : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
+          <span>{item.label}</span>
+        </div>
+      </button>
+    );
   };
 
   return (
@@ -98,15 +152,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             </div>
 
-            {/* NextPay Transparent Status */}
+            {/* NextPay Status */}
             <div className="mt-1.5 flex items-center justify-between px-2 py-0.5 rounded bg-surface-container-low border border-surface-container/60">
-              <span className="text-[10px] text-outline font-medium">Gateway de Pagamentos:</span>
+              <span className="text-[10px] text-outline font-medium">Gateway:</span>
               <div className="flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-secondary"></span>
-                <span className="text-[11px] font-bold text-secondary tracking-tight">
-                  Transparente
-                </span>
-                <span className="text-[9px] text-outline">D+0</span>
+                <span className="text-[11px] font-bold text-secondary tracking-tight">NextPay</span>
+                <span className="text-[9px] text-outline">v1</span>
               </div>
             </div>
           </div>
@@ -134,10 +186,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 ? `R$ ${availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                 : '••••••'}
             </div>
-            <span className="text-[10px] text-secondary font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-              Liquidação D+0 Ativa
-            </span>
           </div>
 
           {/* Central de Navegação */}
@@ -145,93 +193,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="font-label-sm text-[10px] text-outline uppercase tracking-wider font-semibold block px-2 mb-1">
               Central de Navegação
             </span>
-            <nav className="flex flex-col gap-0.5">
-              {mainNav.map((item) => {
-                const isActive = currentView === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => handleNav(item.id)}
-                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors font-body-md text-xs ${
-                      isActive
-                        ? 'bg-primary-container text-on-primary font-semibold shadow-xs'
-                        : item.highlight
-                          ? 'bg-secondary-container/20 text-secondary hover:bg-secondary-container/30 font-semibold'
-                          : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
-                      <span>{item.label}</span>
-                    </div>
-                    {item.highlight && (
-                      <span className="px-1.5 py-0.2 rounded text-[9px] bg-secondary text-white font-bold uppercase">
-                        Spread
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
+            <nav className="flex flex-col gap-0.5">{mainNav.map(renderNavItem)}</nav>
           </div>
 
-          {/* Movimentações & Serviços Financeiros */}
+          {/* Serviços Financeiros */}
           <div>
             <span className="font-label-sm text-[10px] text-outline uppercase tracking-wider font-semibold block px-2 mb-1">
               Serviços Financeiros
             </span>
-            <nav className="flex flex-col gap-0.5">
-              {financialNav.map((item) => {
-                const isActive = currentView === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => handleNav(item.id)}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-colors font-body-md text-xs ${
-                      isActive
-                        ? 'bg-primary-container text-on-primary font-semibold shadow-xs'
-                        : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
+            <nav className="flex flex-col gap-0.5">{financialNav.map(renderNavItem)}</nav>
           </div>
 
-          {/* Configurações & Infraestrutura */}
+          {/* Infraestrutura & Apps */}
           <div>
             <span className="font-label-sm text-[10px] text-outline uppercase tracking-wider font-semibold block px-2 mb-1">
               Infraestrutura & Apps
             </span>
-            <nav className="flex flex-col gap-0.5">
-              {toolsNav.map((item) => {
-                const isActive = currentView === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => handleNav(item.id)}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-colors font-body-md text-xs ${
-                      isActive
-                        ? 'bg-primary-container text-on-primary font-semibold shadow-xs'
-                        : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
+            <nav className="flex flex-col gap-0.5">{toolsNav.map(renderNavItem)}</nav>
           </div>
         </div>
 
-        {/* User Account / NextPay Bank Account Card */}
+        {/* User Account Card */}
         <div className="p-3 border-t border-surface-container bg-surface-container-low/70 flex-shrink-0">
           <div className="flex flex-col gap-1 text-[11px]">
             <div className="flex items-center justify-between">

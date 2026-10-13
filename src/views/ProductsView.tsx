@@ -302,13 +302,9 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                       </button>
                       <button
                         type="button"
-                        onClick={() =>
-                          onShowToast(
-                            `Métricas de Vendas: ${product.salesCount} unidades vendidas para "${product.title}"`,
-                          )
-                        }
-                        className="h-9 w-9 flex items-center justify-center rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors"
-                        title="Ver Vendas"
+                        disabled
+                        className="h-9 w-9 flex items-center justify-center rounded-lg bg-surface-container text-on-surface-variant/50 cursor-not-allowed"
+                        title="Em breve"
                       >
                         <span className="material-symbols-outlined text-[18px]">monitoring</span>
                       </button>
