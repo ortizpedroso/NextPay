@@ -9,6 +9,11 @@ Como usar:
 4. Eu rodo instalação, typecheck, build e testes, leio o código contra os **critérios de aceite** da
    fase e devolvo uma lista de correções, que você cola de volta no AI Studio.
 
+Antes da Fase 1, crie um banco **PostgreSQL gerenciado** (Neon ou Supabase têm plano gratuito) e
+cadastre a string de conexão no painel **Secrets** do AI Studio como `DATABASE_URL`. Um banco em
+arquivo (SQLite) não serve: o AI Studio publica no Cloud Run, que apaga os arquivos a cada
+reinício. Crie também um segundo banco só para testes e cadastre como `DATABASE_URL_TEST`.
+
 Configure no painel **Secrets** do AI Studio, antes da Fase 3:
 `ASAAS_API_KEY` (chave do **sandbox**), `ASAAS_ENV=sandbox`, `ASAAS_WEBHOOK_TOKEN` (texto aleatório
 que você inventa), `JWT_SECRET` (texto aleatório longo).
@@ -44,10 +49,13 @@ REGRAS OBRIGATÓRIAS (valem para todas as fases)
 2. Stack fixa: React 19, Vite, Tailwind 4, TypeScript estrito no front e no back. Back-end em
    Express, arquivo `server.ts` na raiz, executado com `tsx`, servindo o Vite como middleware em
    desenvolvimento e a pasta `dist/` em produção, na porta 3000. Não troque de framework.
-3. Segredos (chave do Asaas, JWT_SECRET, token de webhook) só existem no servidor, lidos de
+   Banco: PostgreSQL acessado SOMENTE pelo Prisma ORM (versão estável mais recente, seguindo a
+   documentação oficial dela). Conexão por `process.env.DATABASE_URL`. Nada de SQL solto.
+3. Segredos (DATABASE_URL, chave do Asaas, JWT_SECRET, token de webhook) só existem no servidor, lidos de
    `process.env`. Nunca envie segredo ao navegador e nunca escreva tokens no código.
 4. Toda chamada ao Asaas acontece no servidor. O front só conversa com a nossa API em `/api/*`.
-5. Dinheiro é armazenado e trafega como inteiro em centavos (`amountCents: number`). Formatação
+5. Dinheiro é armazenado e trafega como inteiro em centavos (`amountCents: number`; no Prisma,
+   campo `Int`, nunca `Float`). Formatação
    em R$ acontece só na exibição, por uma função única `formatBRL(cents)` em src/lib/format.ts.
    Não crie campos "...Formatted" nos dados.
 6. Datas trafegam em ISO 8601 (UTC) e são formatadas na exibição com Intl / pt-BR.
@@ -85,7 +93,7 @@ FASE 0 — Saneamento. Não mude o layout nem o comportamento das telas nesta fa
    Crie src/lib/format.ts com formatBRL(cents) e parseBRLToCents("1.500,00") e testes para ambos
    (inclua 0, centavos, milhares, valores negativos e entradas inválidas).
 5. Crie .github/workflows/ci.yml: em push e pull_request, Node 22, `npm ci`, typecheck, lint,
-   test e build.
+   test e build. (Na Fase 1 o CI ganhará um serviço PostgreSQL para os testes.)
 6. Crie README.md em português: o que é o projeto, requisitos, como rodar, variáveis de ambiente,
    scripts disponíveis.
 7. Gere e mantenha o package-lock.json.
@@ -104,11 +112,19 @@ FASE 1 — Back-end e persistência. Ainda sem Asaas e sem login.
 1. Crie server.ts (Express) conforme o contexto mestre, com:
    - `GET /api/health` → `{ ok: true }`;
    - middleware JSON, tratamento central de erros no formato padrão, log de cada requisição.
-2. Persistência: use Firestore (via integração Firebase do AI Studio) se estiver disponível.
-   Se não estiver, use SQLite com `better-sqlite3` em ./data/nextpay.db. Em qualquer caso,
-   acesse o banco SOMENTE por uma camada server/repositories/* com interfaces TypeScript, para
-   que o banco possa ser trocado depois sem tocar nas rotas.
-3. Modele (com campos createdAt/updatedAt e accountId em tudo, para multi-conta futura):
+2. Persistência com Prisma + PostgreSQL:
+   - instale `prisma` (dev) e `@prisma/client`; schema em prisma/schema.prisma, provider
+     "postgresql", url de `DATABASE_URL`;
+   - crie UM cliente Prisma compartilhado em server/db.ts (singleton, sem abrir uma conexão por
+     requisição) e acesse o banco só por funções em server/repositories/*; rotas não importam o
+     Prisma direto;
+   - versionar as migrações em prisma/migrations (gere com `prisma migrate dev`); nunca use
+     `prisma db push` como fluxo oficial;
+   - scripts: "db:migrate": "prisma migrate dev", "db:deploy": "prisma migrate deploy",
+     "db:seed": "tsx prisma/seed.ts", "db:studio": "prisma studio"; rode `prisma generate` no
+     "postinstall" e `prisma migrate deploy` antes de iniciar o servidor em produção.
+3. Modele no schema.prisma (com id `cuid()`, createdAt/updatedAt e accountId em tudo, relações
+   e índices em accountId e nos campos de busca; status e métodos como `enum` do Prisma):
    Account, Customer (nome, cpfCnpj, email, telefone), Product (title, description, category,
    priceCents, billingType 'avulsa'|'recorrente', cycle opcional, imageUrl, active),
    PaymentLink, Charge (customerId, description, amountCents, method 'PIX'|'BOLETO'|'CREDIT_CARD',
@@ -116,18 +132,21 @@ FASE 1 — Back-end e persistência. Ainda sem Asaas e sem login.
 4. Rotas REST com validação zod: CRUD de /api/products, /api/customers, /api/payment-links;
    leitura e criação de /api/charges (criação ainda só grava no banco, status 'PENDING').
    Listagens aceitam `?page=&pageSize=&q=` e retornam `{ items, total, page, pageSize }`.
-5. Crie um script `npm run seed` que popula o banco convertendo o conteúdo de
-   src/data/mockData.ts para o novo modelo (valores em centavos, datas ISO). Depois disso, as telas
-   NÃO podem mais importar mockData.ts — apague o arquivo ao final da fase.
+5. Crie prisma/seed.ts (`npm run db:seed`) com os mesmos exemplos de src/data/mockData.ts já
+   convertidos para o novo modelo (valores em centavos, datas reais) e escritos dentro do próprio
+   seed. O seed deve poder rodar duas vezes sem duplicar dados (use upsert). Depois disso, apague
+   src/data/mockData.ts — nenhuma tela pode mais importá-lo.
 6. No front, crie src/api/client.ts (fetch tipado, tratamento de erro) e use TanStack Query para
    carregar e mutar dados. Mostre estados de carregando, vazio e erro em cada lista.
 7. Ligue as telas Produtos, Cobranças & Links e Dashboard à API: criar, editar, excluir,
    pausar/ativar link, busca e paginação reais (remova o "Página 1 de 30" fixo). KPIs e gráfico do
    Dashboard calculados a partir das cobranças reais do período selecionado (7/14/30 dias).
-8. Testes de integração das rotas com supertest (banco isolado por teste).
+8. Testes de integração das rotas com supertest usando o banco de `DATABASE_URL_TEST` (aplique as
+   migrações antes e limpe as tabelas entre testes). No ci.yml, adicione um serviço `postgres`
+   e rode `prisma migrate deploy` antes dos testes.
 
 Critério de pronto: recarregar a página mantém os dados; nenhuma tela importa mockData;
-os testes das rotas passam.
+`prisma migrate deploy` num banco vazio cria todas as tabelas; os testes das rotas passam.
 ```
 
 ---

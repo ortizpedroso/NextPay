@@ -45,7 +45,7 @@ conectar integrações) apenas exibem um toast ou um `setTimeout` simulando suce
 
 ### 2. Back-end / API (inexistente)
 - [ ] Criar servidor (ex.: Express já listado nas dependências) com API REST
-- [ ] Banco de dados e modelagem: contas/subcontas, clientes, produtos, links, cobranças, transações, assinaturas, saques, webhooks
+- [ ] Banco de dados PostgreSQL com Prisma (schema, migrações versionadas e seed) e modelagem: contas/subcontas, clientes, produtos, links, cobranças, transações, assinaturas, saques, webhooks
 - [ ] Substituir `mockData.ts` e o estado em memória do `App.tsx` por chamadas à API (os dados se perdem ao recarregar a página)
 - [ ] Camada de serviço/cliente HTTP no front (loading, erros, retries)
 - [ ] Variáveis de ambiente reais (`.env.example` só tem `GEMINI_API_KEY` e `APP_URL`, nenhuma chave de gateway)
