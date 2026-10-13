@@ -182,3 +182,26 @@ REGRAS OBRIGATÓRIAS (valem para todas as fases)
 
 Responda apenas "Contexto atualizado" e aguarde a próxima mensagem.
 ```
+
+---
+
+# Reauditoria — correções da Fase 0
+
+Commit auditado: `61a8eda` (`ai-studio/fase-0-correcoes`) · Resultado: **aprovada**
+
+| Verificação | Resultado |
+|---|---|
+| `npm ci`, typecheck (`strict: true`), lint (sem `any`, sem variáveis não usadas) | ✅ |
+| `npx prettier --check .` | ✅ |
+| `npm test` | ✅ 14 testes |
+| `npm run build` | ✅ (bundle caiu de 506 kB para 454 kB) |
+| CI no GitHub (run 38451282795) | ✅ success |
+| `parseBRLToCents` rejeita todos os casos inválidos da auditoria e aceita os válidos | ✅ |
+| Telas falsas removidas, itens extras do menu desabilitados com "Em breve", sem "Flapp" | ✅ |
+| `bun.lock` removido, `.env.example` com os nomes combinados | ✅ |
+
+Pendências pequenas que serão resolvidas nas próximas fases (não bloqueiam):
+- Teste de latência ainda usa número aleatório e tokens de exemplo continuam escritos no componente
+  (Fases 3 e 5 substituem).
+- `Header` recebe a prop `onOpenSimulator` sem uso real (limpar quando o simulador for decidido).
+- O tooltip do saque diz "Fase 6"; saques entram na Fase 5.
