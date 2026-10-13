@@ -44,6 +44,8 @@ Commit auditado: `655309b` (`main`) · Resultado: **reprovada, com correções**
 
 ## Prompt de correção (colar no AI Studio)
 
+Cole primeiro a **Atualização do contexto** (seção abaixo) e depois este prompt.
+
 ```text
 A auditoria da Fase 0 encontrou os problemas abaixo. Corrija TODOS, um a um, sem alterar nada que
 não esteja na lista. Ao final, para cada item, diga o arquivo e o que mudou.
@@ -51,14 +53,17 @@ não esteja na lista. Ao final, para cada item, diga o arquivo e o que mudou.
 1. Crie .github/workflows/ci.yml: em push e pull_request, Node 22, `npm ci`, `npm run typecheck`,
    `npm run lint`, `npx prettier --check .`, `npm test` e `npm run build`.
 
-2. A Fase 0 não permitia novas telas. Para as funções que NÃO fazem parte das Fases 1 a 6
-   (Simular Venda, Vendas Físicas, Cartão NextPay, Pague Contas, Notas Fiscais, Serasa,
-   Open Finance, loja de apps, Benefícios & Indique, Antecipações): mantenha os itens no menu,
-   mas desabilitados, com o selo "Em breve", sem abrir tela. Apague AnticipationView,
-   SalesSimulatorView e NextPayServicesView. Remova o nome "Flapp" de todo o código.
-   Mantenha ClientsView, mas remova o cadastro falso: o botão de novo cliente fica desabilitado
-   com "Em breve" até a Fase 1 (que cria /api/customers). Nenhum toast de sucesso pode ser
-   disparado sem uma operação real.
+2. A Fase 0 não permitia novas telas nem funções simuladas. Faça assim:
+   - Apague AnticipationView, SalesSimulatorView e NextPayServicesView e todo código que simula
+     sucesso com setTimeout + toast nessas funções.
+   - No menu, mantenha os itens abaixo VISÍVEIS, porém DESABILITADOS, com o selo "Em breve" e sem
+     abrir tela: Antecipações, Consulta Serasa & Negativação, Notas Fiscais, Pague Contas (serão
+     implementados na Fase 7); Simular Venda, Vendas Físicas (Tap), Cartão NextPay, Open Finance,
+     Benefícios & Indique e a loja de aplicativos (fora do escopo atual).
+   - Remova o nome "Flapp" de todo o código; a loja de aplicativos se chama "Loja NextPay".
+   - Mantenha ClientsView, mas o botão de novo cliente fica desabilitado com "Em breve" até a
+     Fase 1 (que cria /api/customers).
+   - Nenhum toast de sucesso pode ser disparado sem uma operação real.
 
 3. parseBRLToCents deve LANÇAR erro (nunca corrigir em silêncio) quando:
    - houver mais de 2 casas decimais ("0,555", "1.500,999");
@@ -74,13 +79,29 @@ não esteja na lista. Ao final, para cada item, diga o arquivo e o que mudou.
 
 5. Apague bun.lock. O projeto usa somente npm.
 
-6. Em .env.example e README, use os nomes: DATABASE_URL, DATABASE_URL_TEST, ASAAS_API_KEY,
-   ASAAS_ENV (sandbox|production), ASAAS_WEBHOOK_TOKEN, JWT_SECRET, APP_URL, PORT.
+6. Em .env.example e no README, use exatamente estes nomes: PORT, APP_URL, DATABASE_URL,
+   DATABASE_URL_TEST, ASAAS_API_KEY, ASAAS_ENV (sandbox|production), ASAAS_WEBHOOK_TOKEN,
+   JWT_SECRET, ENCRYPTION_KEY, NEXTPAY_WALLET_ID.
 
 7. No README, remova afirmações que o produto ainda não cumpre (conformidade com o Banco Central,
-   liquidação rápida, etc.) e descreva o estado real: protótipo em evolução por fases.
+   liquidação rápida etc.) e descreva o estado real: protótipo em evolução por fases.
+
+8. Nome: em todo texto visível ao usuário (telas, títulos, README, index.html, metadata.json,
+   comprovantes) o nome é exatamente "NextPay". Nomes de código seguem a convenção
+   (nextpay, NEXTPAY_...).
 
 Critério de pronto: `npm ci && npm run typecheck && npm run lint && npx prettier --check . &&
 npm test && npm run build` sem erros; nenhum toast de sucesso falso; CI rodando no GitHub.
-Salve na branch ai-studio/fase-0-correcoes (não na main).
+Salve na branch ai-studio/fase-0-correcoes (NÃO na main).
+```
+
+## Atualização do contexto (colar antes do prompt de correção)
+
+```text
+ATUALIZAÇÃO DO CONTEXTO: substitua o contexto mestre anterior pelo texto abaixo. Mudanças: stack
+fixa (React + Vite + Express + Prisma + PostgreSQL), estrutura de pastas alvo, modelo de negócio
+com subcontas Asaas por lojista e comissão do NextPay via split, e nome sempre "NextPay".
+Não altere nada agora; responda apenas "Contexto atualizado" e aguarde.
+
+[cole aqui o Contexto mestre atual de prompts/google-ai-studio.md]
 ```

@@ -5,7 +5,7 @@ Como usar:
 1. Cole o **Contexto mestre** uma única vez, no início da conversa do AI Studio (modo Build).
 2. Cole **uma fase por vez**, na ordem. Não avance para a próxima antes de a fase atual funcionar.
 3. Ao fim de cada fase, salve no GitHub (botão "Save to GitHub") em uma branch própria, por exemplo
-   `ai-studio/fase-1`, e me peça a auditoria informando o nome da branch.
+   `ai-studio/fase-1` — **nunca direto na `main`** — e me peça a auditoria informando o nome da branch.
 4. Eu rodo instalação, typecheck, build e testes, leio o código contra os **critérios de aceite** da
    fase e devolvo uma lista de correções, que você cola de volta no AI Studio.
 
@@ -15,8 +15,14 @@ arquivo (SQLite) não serve: o AI Studio publica no Cloud Run, que apaga os arqu
 reinício. Crie também um segundo banco só para testes e cadastre como `DATABASE_URL_TEST`.
 
 Configure no painel **Secrets** do AI Studio, antes da Fase 3:
-`ASAAS_API_KEY` (chave do **sandbox**), `ASAAS_ENV=sandbox`, `ASAAS_WEBHOOK_TOKEN` (texto aleatório
-que você inventa), `JWT_SECRET` (texto aleatório longo).
+`ASAAS_API_KEY` (chave da conta raiz do NextPay no **sandbox**), `ASAAS_ENV=sandbox`,
+`ASAAS_WEBHOOK_TOKEN` (texto aleatório que você inventa), `JWT_SECRET` (texto aleatório longo),
+`ENCRYPTION_KEY` (32 bytes aleatórios em base64, para cifrar as chaves das subcontas) e
+`NEXTPAY_WALLET_ID` (o walletId da conta raiz, que recebe a comissão do NextPay).
+
+Ordem completa: Contexto mestre → Fase 0 → correção da Fase 0 (`audits/fase-0.md`) → Fase 1 →
+Fase 2 → Fase 3 → Fase 4 → Fase 5 → Fase 6 → Fase 7. Depois de cada fase vem a auditoria e, se
+necessário, o prompt de correção.
 
 ---
 
@@ -42,6 +48,18 @@ ESTADO ATUAL
 OBJETIVO
 Transformar o protótipo em um app funcional, com back-end próprio integrado à API do Asaas
 (gateway de pagamentos brasileiro), mantendo o visual atual.
+
+MODELO DE NEGÓCIO (white-label sobre o Asaas)
+- O NextPay tem UMA conta raiz no Asaas (ASAAS_API_KEY). Cada lojista que se cadastra no NextPay
+  ganha uma SUBCONTA Asaas própria, criada pela API de subcontas (BaaS). O dinheiro das vendas cai
+  na subconta do lojista, nunca na conta raiz.
+- Toda operação de um lojista (cobrança, saque, serviço) é feita com a chave de API da subconta
+  DELE. A chave da conta raiz só cria subcontas e consulta dados da plataforma.
+- O NextPay ganha dinheiro de duas formas: (a) comissão sobre cada venda, enviada para a carteira
+  da conta raiz (NEXTPAY_WALLET_ID) pelo split de pagamento do Asaas; (b) preço próprio dos
+  serviços sob demanda (Fase 7), acima do custo cobrado pelo Asaas.
+- Nome do produto: escreva sempre exatamente "NextPay" em todo texto visível ao usuário. Em nomes
+  de código siga a convenção da linguagem (nextpay, NEXTPAY_...).
 
 STACK DEFINIDA (não negociável — não proponha alternativas)
 - Front-end: React 19 + Vite + Tailwind CSS 4 + TypeScript (SPA).
@@ -73,8 +91,10 @@ REGRAS OBRIGATÓRIAS (valem para todas as fases)
 2. Siga a STACK DEFINIDA e a ESTRUTURA DE PASTAS acima. TypeScript em modo `strict`, sem `any`
    implícito. O servidor escuta na porta 3000. Prisma na versão estável mais recente, seguindo a
    documentação oficial dessa versão; conexão por `process.env.DATABASE_URL`; nada de SQL solto.
-3. Segredos (DATABASE_URL, chave do Asaas, JWT_SECRET, token de webhook) só existem no servidor, lidos de
-   `process.env`. Nunca envie segredo ao navegador e nunca escreva tokens no código.
+3. Segredos (DATABASE_URL, chaves do Asaas, JWT_SECRET, ENCRYPTION_KEY, token de webhook) só existem
+   no servidor, lidos de `process.env`. Nunca envie segredo ao navegador e nunca escreva tokens no
+   código. As chaves de API das subcontas ficam no banco cifradas (AES-256-GCM com ENCRYPTION_KEY)
+   e nunca aparecem em logs nem em respostas da API.
 4. Toda chamada ao Asaas acontece no servidor. O front só conversa com a nossa API em `/api/*`.
 5. Dinheiro é armazenado e trafega como inteiro em centavos (`amountCents: number`; no Prisma,
    campo `Int`, nunca `Float` nem `Decimal`). Formatação em R$ acontece só na exibição, por uma
@@ -215,8 +235,19 @@ FASE 3 — Integração com o Asaas (sandbox). Confira cada endpoint na document
 
 1. Crie server/integrations/asaas.ts: cliente HTTP com base URL escolhida por ASAAS_ENV
    (sandbox: https://api-sandbox.asaas.com/v3, produção: https://api.asaas.com/v3), cabeçalho
-   `access_token` com ASAAS_API_KEY, timeout, tratamento de erros do Asaas e tipos TypeScript
-   das respostas usadas. Nenhum outro arquivo chama o Asaas diretamente.
+   `access_token`, timeout, tratamento de erros do Asaas e tipos TypeScript das respostas usadas.
+   O cliente recebe a chave como parâmetro: `asaasFor(account)` usa a chave (decifrada) da subconta
+   do lojista; `asaasRoot()` usa ASAAS_API_KEY. Nenhum outro arquivo chama o Asaas diretamente.
+1b. Subcontas: crie a tela "Ativar recebimentos" em /app/ativar, onde o lojista informa os dados
+   exigidos pelo Asaas para abrir a subconta (nome/razão social, CPF/CNPJ, e-mail, telefone,
+   endereço, faturamento etc. — confira a lista na documentação). O servidor cria a subconta com
+   `asaasRoot()` (POST /accounts), guarda no Account o id, o walletId e a chave da subconta
+   (cifrada) e configura o webhook da subconta apontando para /api/webhooks/asaas. Mostre o status
+   de aprovação da subconta. Enquanto ela não estiver aprovada, criar cobranças fica desabilitado
+   com a explicação do motivo.
+1c. Comissão do NextPay: tabela PlatformFee no banco (percentual e/ou valor fixo por método de
+   pagamento, editável só por administrador). Toda cobrança criada envia `split` para
+   NEXTPAY_WALLET_ID com a comissão vigente, e o valor fica gravado na Charge (platformFeeCents).
 2. Clientes: ao criar uma cobrança, garanta o cliente no Asaas (POST /customers) e guarde o
    asaasCustomerId. Valide CPF/CNPJ (dígitos verificadores) no front e no servidor.
 3. Cobranças (POST /payments):
@@ -225,9 +256,11 @@ FASE 3 — Integração com o Asaas (sandbox). Confira cada endpoint na document
    - BOLETO: exiba linha digitável (GET /payments/{id}/identificationField) e link do PDF
      (bankSlipUrl) no checkout e na tabela de cobranças.
    - Grave asaasId, status, invoiceUrl, valor líquido e taxa retornados pelo Asaas.
+   - Todas essas chamadas usam `asaasFor(conta do lojista)`.
 4. Modal "Nova cobrança": campos cliente (busca ou cadastro com CPF/CNPJ), descrição, valor,
    vencimento e método; chama a API; a tabela atualiza sozinha.
-5. Webhook: POST /api/webhooks/asaas. Rejeite (401) se o cabeçalho `asaas-access-token` não for
+5. Webhook: POST /api/webhooks/asaas (recebe eventos de todas as subcontas; identifique a conta
+   pelo id da subconta presente no evento ou pelo cliente/cobrança). Rejeite (401) se o cabeçalho `asaas-access-token` não for
    igual a ASAAS_WEBHOOK_TOKEN. Grave cada evento em WebhookEvent; seja idempotente (o mesmo
    evento recebido duas vezes não pode alterar nada na segunda); trate PAYMENT_CREATED,
    PAYMENT_CONFIRMED, PAYMENT_RECEIVED, PAYMENT_OVERDUE, PAYMENT_REFUNDED e PAYMENT_DELETED
@@ -235,9 +268,11 @@ FASE 3 — Integração com o Asaas (sandbox). Confira cada endpoint na document
 6. A tela Integrações passa a listar os WebhookEvent reais (com payload) e o download JSON usa
    esses dados. Remova os logs fictícios. O "teste de latência" mede de verdade uma chamada leve
    ao Asaas feita pelo servidor.
-7. Saldo do Dashboard vem do Asaas (GET /finance/balance), não de estado local.
+7. Saldo do Dashboard vem do Asaas (GET /finance/balance, com a chave da subconta), não de estado
+   local.
 8. Testes: cliente Asaas com respostas simuladas (sem rede), webhook (token inválido → 401,
-   evento duplicado → sem efeito, mudança de status correta).
+   evento duplicado → sem efeito, mudança de status correta), split enviado com a comissão certa,
+   chave de subconta nunca retornada pela API.
 
 Critério de pronto: no sandbox, criar uma cobrança Pix mostra QR Code real; pagar/confirmar a
 cobrança pelo painel do Asaas sandbox muda o status no NextPay via webhook.
@@ -303,7 +338,7 @@ FASE 5 — Recorrência, saques e configurações.
    chaves de API próprias do NextPay (guarde só o hash). Remova os tokens escritos no código.
    Cadastro de URLs de webhook de saída do lojista. Os cards WooCommerce/Shopify/Nuvemshop/
    Infoprodutos ficam desabilitados com "Em breve".
-6. Antecipação de recebíveis: botão desabilitado com "Em breve" (remova o toast falso).
+6. Antecipação de recebíveis: continua "Em breve" (será implementada na Fase 7).
 7. Notificações do Header: listar eventos reais recentes (pagamentos recebidos, vencidos) com
    marcação de lidas persistida.
 
@@ -335,6 +370,49 @@ FASE 6 — Acabamento.
    como ir de sandbox para produção.
 
 Critério de pronto: CI verde com typecheck, lint, testes unitários, de integração e E2E.
+```
+
+---
+
+## Fase 7 — Serviços sob demanda (Serasa, notas fiscais, pague contas, antecipação)
+
+```text
+FASE 7 — Serviços sob demanda revendidos pelo NextPay. Confira cada endpoint, campo, regra e
+tarifa na documentação oficial do Asaas (docs.asaas.com) antes de implementar; não invente nada.
+Todas as chamadas usam `asaasFor(conta do lojista)`.
+
+1. Tarifação própria:
+   - modelo ServicePrice (serviço, custo Asaas em centavos, preço NextPay em centavos, ativo),
+     editável só por administrador;
+   - modelo ServiceUsage (conta, serviço, referência no Asaas, custo, preço cobrado, status, data);
+   - antes de executar qualquer serviço, mostre ao lojista o preço e peça confirmação;
+   - verifique o saldo da subconta; sem saldo suficiente, recuse com mensagem clara;
+   - após o sucesso no Asaas, cobre a diferença (preço NextPay − custo Asaas) transferindo esse
+     valor da subconta para NEXTPAY_WALLET_ID (transferência interna entre contas Asaas) e grave
+     o ServiceUsage. Se o serviço falhar, não cobre nada;
+   - tela "Serviços" com o histórico de uso e o total gasto no mês.
+2. Consulta Serasa: o lojista informa CPF/CNPJ e vê o relatório retornado pelo Asaas. Guarde o
+   resultado (o lojista pode reabrir sem pagar de novo) e registre o aceite de uso dos dados
+   conforme a LGPD.
+3. Negativação Serasa: botão "Negativar" nas cobranças vencidas que cumprem as regras do Asaas
+   (ex.: conta PJ aprovada, vencida há pelo menos o prazo mínimo). Mostre o status da negativação
+   (webhook) e permita cancelar. Quando a cobrança for paga, oriente/execute a baixa.
+4. Notas fiscais de serviço (NFS-e): tela de configuração fiscal da subconta (dados municipais
+   exigidos pelo Asaas), emissão de nota a partir de uma cobrança paga (manual ou automática),
+   cancelamento, download do PDF/XML e status via webhook.
+5. Pague Contas: o lojista informa a linha digitável, o servidor consulta os dados do boleto no
+   Asaas, mostra beneficiário, valor e vencimento para confirmação e paga (na hora ou agendado)
+   com o saldo da subconta. Exija confirmação de senha. Status via webhook.
+6. Antecipação de recebíveis: simule a antecipação de cobranças de cartão/boleto elegíveis (valor
+   líquido e taxa vindos do Asaas), confirme com senha e acompanhe o status via webhook.
+7. Menu: Serasa, Notas Fiscais, Pague Contas e Antecipações passam de "Em breve" para ativos.
+   Cartão NextPay, Open Finance, Vendas Físicas (Tap), loja de apps e Benefícios continuam
+   "Em breve" (não fazem parte deste projeto).
+8. Testes: cálculo de preço e markup, recusa sem saldo, nenhuma cobrança quando o serviço falha,
+   idempotência dos webhooks desses serviços.
+
+Critério de pronto: no sandbox, executar uma consulta Serasa, emitir uma nota, pagar um boleto e
+simular uma antecipação, vendo cada ServiceUsage e a transferência da margem para a conta NextPay.
 ```
 
 ---

@@ -69,6 +69,12 @@ conectar integrações) apenas exibem um toast ou um `setTimeout` simulando suce
 - [ ] Alternância Sandbox/Produção usando credenciais reais
 - [ ] Teste de latência real da API (hoje é `Math.random()`)
 
+### 4b. Modelo white-label e serviços sob demanda (Asaas)
+- [ ] Uma subconta Asaas por lojista (BaaS), com chave de API cifrada no banco
+- [ ] Comissão do NextPay em cada venda via split para a carteira da conta raiz
+- [ ] Serviços revendidos com preço próprio: consulta e negativação Serasa, notas fiscais (NFS-e), pague contas, antecipação
+- [ ] Fora do escopo por enquanto (ficam "Em breve"): Cartão NextPay, Open Finance, Vendas Físicas (Tap), loja de apps, benefícios
+
 ### 5. Funcionalidades incompletas por tela
 **Dashboard**
 - [ ] Gráfico de receita gerado a partir dos dados (hoje SVG estático; o seletor de período não altera nada)
