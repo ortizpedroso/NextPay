@@ -195,7 +195,11 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
                 </label>
                 <select
                   value={category}
-                  onChange={(e) => setCategory(e.target.value as any)}
+                  onChange={(e) =>
+                    setCategory(
+                      e.target.value as 'servicos' | 'digitais' | 'recorrentes' | 'projetos',
+                    )
+                  }
                   className="w-full px-space-md py-2.5 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md border border-surface-container focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary transition-all"
                 >
                   <option value="servicos">Serviço Profissional</option>
@@ -307,7 +311,6 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
                   setImageUrl(
                     'https://lh3.googleusercontent.com/aida-public/AB6AXuBuyIQJXrgS104egwX6vtcxZk5Vl6cQU-I-F3VG8ln5qWr04iARdxvK0P-vJREauVxHmYHkjn1yn_wY2nmYoRs-reBccbmC4GjcS9ALVQxXBODFsJA6dQxnGk2JX2ss2Gdnk6e-0_QZspaf-QkY1FOQUk-sF9N9TKPAYtdJyvCZi8Tq-bxXR_rx2uMZ3nJ262wCYDOT_xLaO9eVAIsv7IyMKoVLWfJcHR79Udhk-nW8duK1BEigKFg',
                   );
-                  onShowToast('Imagem de capa selecionada');
                 }}
                 className="bg-surface-container-low p-space-md rounded-xl flex flex-col items-center justify-center text-center cursor-pointer hover:bg-surface-container-high transition-colors border border-dashed border-outline-variant"
               >
@@ -336,11 +339,15 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
           </button>
           <button
             type="button"
-            onClick={handleSubmit}
-            className="flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-2.5 rounded-lg font-label-md text-label-md font-semibold transition-all shadow-sm"
+            disabled
+            title="Em breve (Fase 4)"
+            className="flex items-center gap-space-xs bg-surface-container-high text-on-surface-variant/70 cursor-not-allowed px-space-lg py-2.5 rounded-lg font-label-md text-label-md font-semibold opacity-80"
           >
             <span className="material-symbols-outlined text-[18px]">check</span>
             <span>Salvar e Gerar Link</span>
+            <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
+              Em breve
+            </span>
           </button>
         </div>
       </aside>

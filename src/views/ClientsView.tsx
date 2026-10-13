@@ -7,16 +7,11 @@ interface ClientsViewProps {
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
-  onShowToast,
+  _onShowToast,
   onOpenNewChargeForClient,
-}) => {
-  const [clients, setClients] = useState(INITIAL_CLIENTS);
+}: ClientsViewProps & { _onShowToast?: (msg: string) => void }) => {
+  const [clients] = useState(INITIAL_CLIENTS);
   const [search, setSearch] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newClientName, setNewClientName] = useState('');
-  const [newClientEmail, setNewClientEmail] = useState('');
-  const [newClientDoc, setNewClientDoc] = useState('');
-  const [newClientPhone, setNewClientPhone] = useState('');
 
   const filteredClients = clients.filter((cli) => {
     if (!search.trim()) return true;
@@ -27,32 +22,6 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
       cli.cpfCnpj.includes(q)
     );
   });
-
-  const handleAddClient = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newClientName || !newClientEmail) {
-      onShowToast('Preencha nome e e-mail do cliente.');
-      return;
-    }
-    const newEntry = {
-      id: `cli-${Date.now()}`,
-      name: newClientName,
-      email: newClientEmail,
-      cpfCnpj: newClientDoc || '000.000.000-00',
-      phone: newClientPhone || '(11) 90000-0000',
-      totalBilled: 'R$ 0,00',
-      chargesCount: 0,
-      status: 'Ativo',
-      city: 'São Paulo - SP',
-    };
-    setClients([newEntry, ...clients]);
-    setShowAddModal(false);
-    setNewClientName('');
-    setNewClientEmail('');
-    setNewClientDoc('');
-    setNewClientPhone('');
-    onShowToast(`Cliente ${newEntry.name} cadastrado com sucesso!`);
-  };
 
   return (
     <div className="flex flex-col w-full">
@@ -79,11 +48,15 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
           <button
             type="button"
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-space-md py-2.5 rounded-xl bg-primary text-on-primary font-semibold text-body-sm shadow-sm hover:bg-primary-container transition-all"
+            disabled
+            title="Em breve"
+            className="flex items-center gap-1.5 px-space-md py-2.5 rounded-xl bg-surface-container-high text-on-surface-variant/70 cursor-not-allowed font-semibold text-body-sm shadow-none opacity-80"
           >
             <span className="material-symbols-outlined text-[18px]">person_add</span>
             <span>Novo Cliente</span>
+            <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
+              Em breve
+            </span>
           </button>
         </div>
 
@@ -175,95 +148,6 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
             </table>
           </div>
         </div>
-
-        {/* Add Modal */}
-        {showAddModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-surface-container-lowest max-w-md w-full p-6 rounded-2xl shadow-2xl border border-surface-container space-y-4">
-              <div className="flex justify-between items-center border-b border-surface-container pb-2">
-                <h3 className="font-headline-sm font-bold text-on-surface">
-                  Cadastrar Novo Cliente
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="p-1 text-on-surface-variant hover:text-on-surface"
-                >
-                  <span className="material-symbols-outlined text-[20px]">close</span>
-                </button>
-              </div>
-
-              <form onSubmit={handleAddClient} className="space-y-3">
-                <div>
-                  <label className="text-xs font-semibold text-on-surface block mb-1">
-                    Nome Completo ou Razão Social
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newClientName}
-                    onChange={(e) => setNewClientName(e.target.value)}
-                    placeholder="Ex: Amanda Silva, Empresa X..."
-                    className="w-full bg-surface-container-low px-3 py-2 rounded-xl border border-surface-container text-body-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-on-surface block mb-1">E-mail</label>
-                  <input
-                    type="email"
-                    required
-                    value={newClientEmail}
-                    onChange={(e) => setNewClientEmail(e.target.value)}
-                    placeholder="cliente@exemplo.com"
-                    className="w-full bg-surface-container-low px-3 py-2 rounded-xl border border-surface-container text-body-sm"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs font-semibold text-on-surface block mb-1">
-                      CPF / CNPJ
-                    </label>
-                    <input
-                      type="text"
-                      value={newClientDoc}
-                      onChange={(e) => setNewClientDoc(e.target.value)}
-                      placeholder="000.000.000-00"
-                      className="w-full bg-surface-container-low px-3 py-2 rounded-xl border border-surface-container text-body-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-on-surface block mb-1">
-                      WhatsApp / Telefone
-                    </label>
-                    <input
-                      type="text"
-                      value={newClientPhone}
-                      onChange={(e) => setNewClientPhone(e.target.value)}
-                      placeholder="(11) 90000-0000"
-                      className="w-full bg-surface-container-low px-3 py-2 rounded-xl border border-surface-container text-body-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddModal(false)}
-                    className="px-4 py-2 text-xs text-on-surface-variant hover:bg-surface-container rounded-xl"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-xs bg-primary text-on-primary font-semibold rounded-xl hover:bg-primary-container"
-                  >
-                    Salvar Cliente
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

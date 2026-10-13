@@ -10,8 +10,8 @@ interface CheckoutViewProps {
 export const CheckoutView: React.FC<CheckoutViewProps> = ({
   selectedItem,
   onBackToDashboard,
-  onShowToast,
-}) => {
+  _onShowToast,
+}: CheckoutViewProps & { _onShowToast?: CheckoutViewProps['onShowToast'] }) => {
   const [selectedMethod, setSelectedMethod] = useState<'pix' | 'card' | 'boleto'>('pix');
   const [copiedPix, setCopiedPix] = useState(false);
   const [cardNumber, setCardNumber] = useState('');
@@ -22,7 +22,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   const [installments, setInstallments] = useState('12');
   const [cpf, setCpf] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   // 15-minute countdown timer
@@ -40,13 +39,18 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   const formattedCountdown = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   // Item details fallback to original screen item
+  const isProduct = Boolean(selectedItem && 'price' in selectedItem);
+  const isLink = Boolean(selectedItem && 'unitPrice' in selectedItem);
+  const productItem = isProduct ? (selectedItem as ProductItem) : null;
+  const linkItem = isLink ? (selectedItem as PaymentLink) : null;
+
   const itemTitle = selectedItem?.title || 'Identidade Visual Completa + Manual de Marca';
   const itemDescription =
-    (selectedItem as any)?.description ||
-    (selectedItem as any)?.subtitle ||
+    productItem?.description ||
+    linkItem?.subtitle ||
     'Desenvolvimento de branding completo, tipografia proprietária, guia de paleta de cores, arquivos em alta resolução para web/print e transfer de propriedade intelectual.';
 
-  const basePrice = (selectedItem as any)?.unitPrice || (selectedItem as any)?.price || 1800.0;
+  const basePrice = productItem?.price ?? linkItem?.unitPrice ?? 1800.0;
   const pixDiscount = basePrice * 0.05;
   const pixTotal = basePrice - pixDiscount;
 
@@ -59,7 +63,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   const handleCopyPix = () => {
     navigator.clipboard.writeText(pixCode);
     setCopiedPix(true);
-    onShowToast('Código Pix Copia e Cola copiado para a área de transferência!');
     setTimeout(() => setCopiedPix(false), 2000);
   };
 
@@ -77,39 +80,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
     } else {
       setCardBrand('Visa/Master/Elo');
     }
-  };
-
-  const handlePayCard = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cardNumber || !cardHolder || !cardExpiry || !cardCvv) {
-      onShowToast('Preencha os dados do cartão de crédito.');
-      return;
-    }
-    setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      setIsSuccess(true);
-      onShowToast('Pagamento com cartão de crédito aprovado via antifraude 3DS!');
-    }, 1200);
-  };
-
-  const handleGenerateBoleto = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!cpf || !whatsapp) {
-      onShowToast('Informe seu CPF/CNPJ e WhatsApp para receber o boleto.');
-      return;
-    }
-    setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      setIsSuccess(true);
-      onShowToast(`Boleto registrado emitido com sucesso e enviado para ${whatsapp}!`);
-    }, 1000);
-  };
-
-  const handleSimulatePixPaid = () => {
-    setIsSuccess(true);
-    onShowToast('Recebimento Pix identificado em tempo real pelo Banco Central!');
   };
 
   return (
@@ -166,7 +136,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                 type="button"
                 onClick={() => {
                   setIsSuccess(false);
-                  onShowToast('Comprovante enviado para o seu e-mail');
                 }}
                 className="px-6 py-2.5 bg-primary text-on-primary rounded-xl font-semibold text-body-md hover:bg-primary-container transition-all"
               >
@@ -332,7 +301,6 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                   type="button"
                   onClick={() => {
                     window.open('https://api.whatsapp.com', '_blank');
-                    onShowToast('Abrindo canal direto no WhatsApp do Estúdio');
                   }}
                   className="font-label-md text-label-md text-primary font-semibold hover:underline"
                 >
@@ -580,20 +548,16 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                           Aguardando confirmação do pagamento pelo Banco Central...
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleSimulatePixPaid}
-                        className="text-xs font-semibold text-primary hover:underline"
-                      >
-                        [Simular Confirmação]
-                      </button>
+                      <span className="text-[10px] font-bold uppercase bg-surface-container-highest px-2 py-0.5 rounded text-outline">
+                        Ambiente Seguro
+                      </span>
                     </div>
                   </div>
                 )}
 
                 {/* CARD TAB CONTENT */}
                 {selectedMethod === 'card' && (
-                  <form onSubmit={handlePayCard} className="flex flex-col gap-4">
+                  <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1.5">
                       <label className="font-label-md text-label-md text-on-surface font-medium">
                         Número do Cartão
@@ -684,34 +648,26 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                     </div>
 
                     <button
-                      type="submit"
-                      disabled={isProcessing}
-                      className="w-full h-12 bg-primary text-on-primary font-headline-sm text-headline-sm rounded-lg shadow-sm hover:opacity-95 transition-all flex items-center justify-center gap-2 mt-2 font-semibold disabled:opacity-50"
+                      type="button"
+                      disabled
+                      title="Em breve (Fase 3)"
+                      className="w-full h-12 bg-surface-container-high text-on-surface-variant/70 font-headline-sm text-headline-sm rounded-lg shadow-none cursor-not-allowed flex items-center justify-center gap-2 mt-2 font-semibold opacity-80"
                     >
-                      {isProcessing ? (
-                        <>
-                          <span className="material-symbols-outlined text-lg animate-spin">
-                            refresh
-                          </span>
-                          <span>Processando Cartão com Antifraude...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="material-symbols-outlined text-lg">lock</span>
-                          <span>
-                            Pagar R${' '}
-                            {basePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} com
-                            Cartão
-                          </span>
-                        </>
-                      )}
+                      <span className="material-symbols-outlined text-lg">lock</span>
+                      <span>
+                        Pagar R$ {basePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}{' '}
+                        com Cartão
+                      </span>
+                      <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
+                        Em breve
+                      </span>
                     </button>
                   </form>
                 )}
 
                 {/* BOLETO TAB CONTENT */}
                 {selectedMethod === 'boleto' && (
-                  <form onSubmit={handleGenerateBoleto} className="flex flex-col gap-5">
+                  <form onSubmit={(e) => e.preventDefault()} className="flex flex-col gap-5">
                     <div className="bg-surface-container-low p-5 rounded-xl flex flex-col gap-4 border border-surface-container">
                       <div className="flex items-start gap-3">
                         <div className="p-2 rounded-lg bg-surface-container text-primary">
@@ -774,26 +730,19 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                     </div>
 
                     <button
-                      type="submit"
-                      disabled={isProcessing}
-                      className="w-full h-12 bg-primary text-on-primary font-headline-sm text-headline-sm rounded-lg shadow-sm hover:opacity-95 transition-all flex items-center justify-center gap-2 font-semibold disabled:opacity-50"
+                      type="button"
+                      disabled
+                      title="Em breve (Fase 3)"
+                      className="w-full h-12 bg-surface-container-high text-on-surface-variant/70 font-headline-sm text-headline-sm rounded-lg shadow-none cursor-not-allowed flex items-center justify-center gap-2 font-semibold opacity-80"
                     >
-                      {isProcessing ? (
-                        <>
-                          <span className="material-symbols-outlined text-lg animate-spin">
-                            refresh
-                          </span>
-                          <span>Registrando Boleto na CIP...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="material-symbols-outlined text-lg">receipt</span>
-                          <span>
-                            Gerar Boleto Registrado (R${' '}
-                            {basePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
-                          </span>
-                        </>
-                      )}
+                      <span className="material-symbols-outlined text-lg">receipt</span>
+                      <span>
+                        Gerar Boleto Registrado (R${' '}
+                        {basePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
+                      </span>
+                      <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
+                        Em breve
+                      </span>
                     </button>
                   </form>
                 )}

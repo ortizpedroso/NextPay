@@ -17,12 +17,12 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   amount = 'R$ 4.250,00',
   method = 'Transferência Pix Automática D+0',
   code = '#NEXTPAY-LIQ-9842109',
-  onShowToast,
-}) => {
+  _onShowToast,
+}: ReceiptModalProps & { _onShowToast?: ReceiptModalProps['onShowToast'] }) => {
   if (!isOpen) return null;
 
   const handlePrint = () => {
-    onShowToast('Comprovante enviado para impressão / download PDF');
+    window.print();
   };
 
   return (

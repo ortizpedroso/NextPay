@@ -12,10 +12,7 @@ import { PaymentLinksView } from './views/PaymentLinksView';
 import { CheckoutView } from './views/CheckoutView';
 import { RatesAndIntegrationsView } from './views/RatesAndIntegrationsView';
 import { SubscriptionsView } from './views/SubscriptionsView';
-import { SalesSimulatorView } from './views/SalesSimulatorView';
 import { ClientsView } from './views/ClientsView';
-import { AnticipationView } from './views/AnticipationView';
-import { NextPayServicesView } from './views/NextPayServicesView';
 import { ProductDrawer } from './components/ProductDrawer';
 import { QrPixModal } from './components/modals/QrPixModal';
 import { WithdrawModal } from './components/modals/WithdrawModal';
@@ -92,7 +89,6 @@ export default function App() {
     amount: number;
     method: 'Pix' | 'Cartão' | 'Boleto';
   }) => {
-    // NextPay rate: Pix fixo R$ 2,48 (lucro R$ 0,49), Cartão 3,99% + 0,98, Boleto 1% + 2,48
     const fee =
       charge.method === 'Pix'
         ? 2.48
@@ -101,7 +97,7 @@ export default function App() {
           : charge.amount * 0.0399 + 0.98;
 
     const net = charge.amount - fee;
-    const gatewayProfit = charge.method === 'Pix' ? 0.49 : charge.amount * 0.01 + 0.49;
+    const profit = charge.method === 'Pix' ? 0.49 : charge.amount * 0.01 + 0.49;
 
     const newTx: Transaction = {
       id: `tx-${Date.now()}`,
@@ -109,7 +105,7 @@ export default function App() {
       clientDoc: '***.000.000-**',
       avatarInitials: charge.clientName.slice(0, 2).toUpperCase(),
       description: charge.description,
-      code: `#PAY-${Math.floor(Math.random() * 90000 + 10000)}`,
+      code: `#PAY-${Math.floor(10000 + Math.random() * 90000)}`,
       method: charge.method,
       methodDetail:
         charge.method === 'Pix'
@@ -119,23 +115,16 @@ export default function App() {
             : 'Boleto CIP',
       date: 'Agora',
       grossAmount: charge.amount,
-      grossAmountFormatted: `R$ ${charge.amount.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-      })}`,
-      gatewayFeeFormatted: `- R$ ${fee.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-      })}`,
-      gatewayProfitFormatted: `+ R$ ${gatewayProfit.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-      })}`,
-      netAmountFormatted: `R$ ${net.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-      })}`,
+      grossAmountFormatted: `R$ ${charge.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      gatewayFeeFormatted: `- R$ ${fee.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      gatewayProfitFormatted: `+ R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      netAmountFormatted: `R$ ${net.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       status: charge.method === 'Pix' ? 'Liquidado' : 'Aguardando',
       dueDate: 'Hoje',
     };
 
     setTransactions([newTx, ...transactions]);
+
     if (charge.method === 'Pix') {
       setAvailableBalance((prev) => prev + net);
     }
@@ -157,7 +146,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-surface font-body-md text-body-md text-on-surface antialiased flex flex-col">
-      {/* Toast Notification */}
+      {/* Toast Notification Container */}
       <div
         className={`fixed bottom-6 right-6 z-50 flex items-center gap-space-sm bg-inverse-surface text-inverse-on-surface px-space-md py-space-sm rounded-xl shadow-2xl transition-all duration-300 border border-slate-700/50 ${
           toastMessage
@@ -171,7 +160,7 @@ export default function App() {
         <span className="font-body-md text-body-md font-medium">{toastMessage}</span>
       </div>
 
-      {/* When in dedicated Checkout view, show full standalone client checkout experience */}
+      {/* Mode Switcher: Full Screen Checkout vs Backoffice */}
       {currentView === 'checkout' ? (
         <CheckoutView
           selectedItem={checkoutItem}
@@ -193,7 +182,7 @@ export default function App() {
             <Header
               onOpenNewCharge={() => setIsNewChargeModalOpen(true)}
               onOpenNewLink={() => setCurrentView('cobrancas-e-links')}
-              onOpenSimulator={() => setCurrentView('simular-venda')}
+              onOpenSimulator={() => {}}
               onOpenCheckoutPreview={() => {
                 setCheckoutItem(null);
                 setCurrentView('checkout');
@@ -260,13 +249,6 @@ export default function App() {
                 />
               )}
 
-              {currentView === 'simular-venda' && (
-                <SalesSimulatorView
-                  onShowToast={showToast}
-                  onNavigate={(viewId) => setCurrentView(viewId)}
-                />
-              )}
-
               {currentView === 'produtos-e-servicos' && (
                 <ProductsView
                   products={products}
@@ -283,31 +265,9 @@ export default function App() {
                 />
               )}
 
-              {currentView === 'antecipacoes' && (
-                <AnticipationView
-                  onShowToast={showToast}
-                  onConfirmWithdraw={handleConfirmWithdraw}
-                />
-              )}
-
               {(currentView === 'integracoes-e-api' ||
                 currentView === 'configuracoes-de-taxas') && (
                 <RatesAndIntegrationsView onShowToast={showToast} />
-              )}
-
-              {(currentView === 'vendas-fisicas' ||
-                currentView === 'cartao-nextpay' ||
-                currentView === 'pague-contas' ||
-                currentView === 'notas-fiscais' ||
-                currentView === 'serasa' ||
-                currentView === 'open-finance' ||
-                currentView === 'flapp-store' ||
-                currentView === 'beneficios') && (
-                <NextPayServicesView
-                  serviceId={currentView}
-                  onShowToast={showToast}
-                  onNavigate={(viewId) => setCurrentView(viewId)}
-                />
               )}
             </main>
           </div>

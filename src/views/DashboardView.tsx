@@ -18,8 +18,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenReceipt,
   onOpenQrPix,
   onNavigate,
-  onShowToast,
-}) => {
+  _onShowToast,
+}: DashboardViewProps & { _onShowToast?: DashboardViewProps['onShowToast'] }) => {
   const [selectedPeriod, setSelectedPeriod] = useState<'30' | '14' | '7'>('30');
   const [txFilter, setTxFilter] = useState<string>('todos');
   const [searchQuery, setSearchQuery] = useState('');
@@ -156,14 +156,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div className="mt-space-lg pt-space-sm flex items-center justify-between text-body-sm font-body-sm border-t border-surface-container/60 pt-2">
               <span className="text-on-surface-variant">Simulador de Lucro:</span>
-              <button
-                type="button"
-                onClick={() => onNavigate('simular-venda')}
-                className="font-semibold text-secondary hover:underline flex items-center gap-0.5"
-              >
+              <span className="font-semibold text-secondary/60 flex items-center gap-1 cursor-not-allowed text-xs">
                 <span>Simular Venda</span>
-                <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-              </button>
+                <span className="text-[9px] uppercase px-1 rounded bg-surface-container-highest text-outline">
+                  Em breve
+                </span>
+              </span>
             </div>
           </div>
 
@@ -197,13 +195,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div className="mt-space-lg pt-space-sm flex items-center justify-between text-body-sm font-body-sm border-t border-surface-container/60 pt-2">
               <span className="text-on-surface-variant">Antecipação pré-aprovada:</span>
-              <button
-                type="button"
-                onClick={() => onNavigate('antecipacoes')}
-                className="font-semibold text-primary hover:underline"
+              <span
+                className="font-semibold text-primary/60 flex items-center gap-1 cursor-not-allowed text-xs"
+                title="Em breve"
               >
-                R$ 12.484,10
-              </button>
+                <span>R$ 12.484,10</span>
+                <span className="text-[9px] uppercase px-1 rounded bg-surface-container-highest text-outline">
+                  Em breve
+                </span>
+              </span>
             </div>
           </div>
 
@@ -540,23 +540,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* 4 FAST ACTION TILES */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
           <div
-            onClick={() => onNavigate('simular-venda')}
-            className="rounded-xl bg-surface-container-lowest p-space-md shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-center gap-space-md group border border-secondary/50 bg-secondary-container/10"
+            className="rounded-xl bg-surface-container-lowest p-space-md shadow-sm flex items-center gap-space-md border border-surface-container/60 opacity-60 cursor-not-allowed select-none"
+            title="Em breve"
           >
-            <div className="h-12 w-12 rounded-lg bg-secondary text-white flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <div className="h-12 w-12 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-[24px]">calculate</span>
             </div>
             <div className="flex flex-col min-w-0">
-              <h3 className="font-title-md text-title-md text-on-surface group-hover:text-secondary transition-colors font-bold">
-                Simular Venda
-              </h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-title-md text-title-md text-on-surface font-bold">
+                  Simular Venda
+                </h3>
+                <span className="text-[9px] uppercase px-1 rounded bg-surface-container-highest text-outline font-semibold">
+                  Em breve
+                </span>
+              </div>
               <p className="font-body-sm text-xs text-on-surface-variant truncate">
                 Calcule o spread de 1% + R$ 0,49
               </p>
             </div>
-            <span className="material-symbols-outlined text-outline ml-auto group-hover:translate-x-1 transition-transform">
-              chevron_right
-            </span>
           </div>
 
           <div
