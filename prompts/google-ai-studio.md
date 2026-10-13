@@ -1,4 +1,4 @@
-# Prompts para o Google AI Studio — NexusPay
+# Prompts para o Google AI Studio — NextPay
 
 Como usar:
 
@@ -18,7 +18,8 @@ que você inventa), `JWT_SECRET` (texto aleatório longo).
 ## Contexto mestre (colar primeiro)
 
 ```text
-Você vai evoluir um app existente chamado NexusPay: um painel white-label de pagamentos (Pix, cartão,
+Você vai evoluir um app existente chamado NextPay (o código atual o chama, por engano, de
+"NexusPay"; o nome correto é NextPay): um painel white-label de pagamentos (Pix, cartão,
 boleto, links de pagamento, catálogo de produtos, assinaturas e saques) voltado a pequenos
 prestadores de serviço brasileiros. Toda a interface está em português do Brasil.
 
@@ -68,7 +69,12 @@ Responda apenas "Contexto entendido" e aguarde a Fase 0.
 ```text
 FASE 0 — Saneamento. Não mude nenhuma tela nesta fase.
 
-1. package.json: renomeie "name" para "nexuspay". Corrija o conflito de dependências (atualize
+1. Nome do produto: o nome correto é NextPay. Substitua TODAS as ocorrências de "NexusPay",
+   "Nexus" e "nexuspay" no projeto (index.html, metadata.json, textos das telas, logo/alt do
+   Sidebar, nomes de arquivo baixados, URLs de exemplo "nexuspay.link") por NextPay / nextpay.
+   Ao final, buscar "nexus" (sem diferenciar maiúsculas) em src/, index.html e metadata.json
+   não pode retornar nada.
+   package.json: renomeie "name" para "nextpay". Corrija o conflito de dependências (atualize
    esbuild para uma versão aceita pelo vite 8 ou remova esbuild se não for usado diretamente) para
    que `npm install` funcione SEM --legacy-peer-deps. Remova @google/genai se nenhuma fase o usar.
    Mantenha express e dotenv (serão usados na Fase 1).
@@ -99,7 +105,7 @@ FASE 1 — Back-end e persistência. Ainda sem Asaas e sem login.
    - `GET /api/health` → `{ ok: true }`;
    - middleware JSON, tratamento central de erros no formato padrão, log de cada requisição.
 2. Persistência: use Firestore (via integração Firebase do AI Studio) se estiver disponível.
-   Se não estiver, use SQLite com `better-sqlite3` em ./data/nexuspay.db. Em qualquer caso,
+   Se não estiver, use SQLite com `better-sqlite3` em ./data/nextpay.db. Em qualquer caso,
    acesse o banco SOMENTE por uma camada server/repositories/* com interfaces TypeScript, para
    que o banco possa ser trocado depois sem tocar nas rotas.
 3. Modele (com campos createdAt/updatedAt e accountId em tudo, para multi-conta futura):
@@ -188,7 +194,7 @@ FASE 3 — Integração com o Asaas (sandbox). Confira cada endpoint na document
    evento duplicado → sem efeito, mudança de status correta).
 
 Critério de pronto: no sandbox, criar uma cobrança Pix mostra QR Code real; pagar/confirmar a
-cobrança pelo painel do Asaas sandbox muda o status no NexusPay via webhook.
+cobrança pelo painel do Asaas sandbox muda o status no NextPay via webhook.
 ```
 
 ---
@@ -206,7 +212,7 @@ FASE 4 — Checkout público.
    multa/juros e vencimento.
 3. O comprador informa nome, CPF/CNPJ, e-mail e WhatsApp (com máscaras e validação). Ao escolher
    o método, o servidor cria a cobrança no Asaas.
-4. CARTÃO DE CRÉDITO: para não colocar o NexusPay no escopo PCI, NÃO colete número de cartão em
+4. CARTÃO DE CRÉDITO: para não colocar o NextPay no escopo PCI, NÃO colete número de cartão em
    formulário próprio. Crie a cobrança com billingType CREDIT_CARD e redirecione o comprador para
    a invoiceUrl do Asaas (ou use o checkout hospedado do Asaas). Remova o formulário de cartão
    atual e o texto "aprovado via antifraude 3DS".
@@ -246,7 +252,7 @@ FASE 5 — Recorrência, saques e configurações.
 4. Configurações de Taxas: persistir repasse de juros de parcelamento ao comprador e quem paga a
    taxa por padrão; mostrar a tabela de taxas vinda da configuração, não fixa no código.
 5. Integrações & API: gerar, listar (mostrando só os 4 últimos caracteres), revogar e rotacionar
-   chaves de API próprias do NexusPay (guarde só o hash). Remova os tokens escritos no código.
+   chaves de API próprias do NextPay (guarde só o hash). Remova os tokens escritos no código.
    Cadastro de URLs de webhook de saída do lojista. Os cards WooCommerce/Shopify/Nuvemshop/
    Infoprodutos ficam desabilitados com "Em breve".
 6. Antecipação de recebíveis: botão desabilitado com "Em breve" (remova o toast falso).

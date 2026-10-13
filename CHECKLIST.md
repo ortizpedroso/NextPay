@@ -1,4 +1,4 @@
-# NexusPay — Análise do projeto e checklist de pendências
+# NextPay — Análise do projeto e checklist de pendências
 
 ## Diagnóstico
 
@@ -38,7 +38,7 @@ conectar integrações) apenas exibem um toast ou um `setTimeout` simulando suce
 - [ ] Renomear o pacote (`"name": "react-example"`) para o nome do projeto
 - [ ] Remover dependências não usadas ou passar a usá-las (`@google/genai`, `express`, `dotenv` estão no `package.json` mas não são importados em lugar nenhum)
 - [ ] Substituir `__dirname` por `import.meta.dirname` em `vite.config.ts`
-- [ ] Padronizar o nome do produto (repositório "NextPay" vs. app "NexusPay")
+- [ ] Renomear o produto para **NextPay** em todo o código (hoje telas, `index.html` e `metadata.json` usam "NexusPay")
 - [ ] Criar `README.md` com instruções de setup, execução e deploy
 - [ ] Configurar ESLint/Prettier (o script `lint` hoje só roda `tsc`)
 - [ ] Configurar CI (GitHub Actions: install, lint, build, testes)
