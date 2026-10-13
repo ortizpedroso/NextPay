@@ -150,7 +150,8 @@ passam sem erros e sem warnings de ESLint.
 ## Fase 1 — Back-end, banco e camada de dados
 
 ```text
-FASE 1 — Back-end e persistência. Ainda sem Asaas e sem login.
+FASE 1 — Back-end e persistência. Ainda sem Asaas e sem login. Parta do código da branch
+ai-studio/fase-0-correcoes (ou da main, se ela já tiver sido mesclada).
 
 1. Crie server.ts (Express) conforme o contexto mestre, com:
    - `GET /api/health` → `{ ok: true, db: true|false }` (testa a conexão com o banco);
@@ -178,6 +179,10 @@ FASE 1 — Back-end e persistência. Ainda sem Asaas e sem login.
    priceCents, billingType 'avulsa'|'recorrente', cycle opcional, imageUrl, active),
    PaymentLink, Charge (customerId, description, amountCents, method 'PIX'|'BOLETO'|'CREDIT_CARD',
    status, dueDate, asaasId opcional, feeCents, netCents), Subscription, Withdrawal, WebhookEvent.
+   Enquanto não houver login (Fase 2), o seed cria UMA conta de demonstração e o servidor usa
+   essa conta em todas as rotas (função única `getCurrentAccountId()` em server/lib, que a Fase 2
+   trocará pela sessão). Os dados da conta exibidos no Header, Sidebar e Dashboard (hoje em
+   NEXTPAY_ACCOUNT do mockData) passam a vir de GET /api/account.
 4. Rotas REST com validação zod: CRUD de /api/products, /api/customers, /api/payment-links;
    leitura e criação de /api/charges (criação ainda só grava no banco, status 'PENDING').
    Listagens aceitam `?page=&pageSize=&q=` e retornam `{ items, total, page, pageSize }`.
@@ -187,7 +192,8 @@ FASE 1 — Back-end e persistência. Ainda sem Asaas e sem login.
    src/data/mockData.ts — nenhuma tela pode mais importá-lo.
 6. No front, crie src/api/client.ts (fetch tipado, tratamento de erro) e use TanStack Query para
    carregar e mutar dados. Mostre estados de carregando, vazio e erro em cada lista.
-7. Ligue as telas Produtos, Cobranças & Links e Dashboard à API: criar, editar, excluir,
+7. Ligue as telas Produtos, Meus Clientes (habilite o botão de novo cliente), Cobranças & Links e
+   Dashboard à API: criar, editar, excluir,
    pausar/ativar link, busca e paginação reais (remova o "Página 1 de 30" fixo). KPIs e gráfico do
    Dashboard calculados a partir das cobranças reais do período selecionado (7/14/30 dias).
 8. Testes de integração das rotas com supertest usando o banco de `DATABASE_URL_TEST` (aplique as
@@ -195,7 +201,8 @@ FASE 1 — Back-end e persistência. Ainda sem Asaas e sem login.
    e rode `prisma migrate deploy` antes dos testes.
 
 Critério de pronto: recarregar a página mantém os dados; nenhuma tela importa mockData;
-`prisma migrate deploy` num banco vazio cria todas as tabelas; os testes das rotas passam.
+`prisma migrate deploy` num banco vazio cria todas as tabelas; os testes das rotas passam; CI
+verde. Salve na branch ai-studio/fase-1 (NÃO na main).
 ```
 
 ---
