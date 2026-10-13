@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Transaction } from '../data/mockData';
+import { Transaction, NEXTPAY_ACCOUNT } from '../data/mockData';
 
 interface DashboardViewProps {
   transactions: Transaction[];
@@ -18,15 +18,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenReceipt,
   onOpenQrPix,
   onNavigate,
-  onShowToast,
-}) => {
+  _onShowToast,
+}: DashboardViewProps & { _onShowToast?: DashboardViewProps['onShowToast'] }) => {
   const [selectedPeriod, setSelectedPeriod] = useState<'30' | '14' | '7'>('30');
   const [txFilter, setTxFilter] = useState<string>('todos');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filter transactions
   const filteredTransactions = transactions.filter((tx) => {
-    // Text search
     const matchesSearch =
       tx.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tx.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -40,9 +39,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (txFilter === 'boleto') return tx.method === 'Boleto';
     if (txFilter === 'pagas')
       return (
-        tx.status === 'Liquidado' ||
-        tx.status === 'Confirmado' ||
-        tx.status === 'Previsto D+30'
+        tx.status === 'Liquidado' || tx.status === 'Confirmado' || tx.status === 'Previsto D+32'
       );
     if (txFilter === 'pendentes')
       return tx.status === 'Aguardando' || tx.status === 'Pendente' || tx.status === 'Vencido';
@@ -53,7 +50,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="flex flex-col w-full">
       <div className="px-4 lg:px-space-xl py-space-lg space-y-space-lg max-w-[1600px] mx-auto w-full">
-        {/* BANNER DE LIQUIDAÇÃO / INTEGRAÇÃO ASAAS */}
+        {/* BANNER DE LIQUIDAÇÃO NEXTPAY */}
         <div className="relative overflow-hidden rounded-xl bg-surface-container-low p-space-md shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md border border-surface-container">
           <div className="flex items-center gap-space-md min-w-0">
             <div className="h-10 w-10 shrink-0 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
@@ -66,12 +63,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   Liquidação Automática D+0
                 </span>
                 <span className="font-body-sm text-body-sm text-outline">
-                  Transparência via API Asaas
+                  NextPay Liquidação Centralizada
                 </span>
               </div>
               <p className="font-body-md text-body-md text-on-surface mt-0.5 truncate">
-                <strong>R$ 4.250,00</strong> transferidos com sucesso para o Banco Itaú (Ag 2819 •
-                C/C 48102-1) hoje às 08:30.
+                <strong>R$ 4.250,00</strong> transferidos com sucesso para a conta{' '}
+                <strong>{NEXTPAY_ACCOUNT.account}</strong> (Ag {NEXTPAY_ACCOUNT.agency} •{' '}
+                {NEXTPAY_ACCOUNT.email}) hoje às 08:30.
               </p>
             </div>
           </div>
@@ -95,7 +93,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div>
               <div className="flex items-center justify-between">
                 <span className="font-label-md text-label-md text-on-surface-variant font-medium">
-                  Saldo Disponível
+                  Saldo em Conta
                 </span>
                 <span className="p-1.5 rounded-lg bg-secondary-container/40 text-secondary">
                   <span className="material-symbols-outlined text-[20px]">payments</span>
@@ -128,12 +126,51 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Card 2: Saldo a Liberar */}
+          {/* Card 2: Lucro do Dono do Gateway (NextPay Spread) */}
+          <div className="rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between border border-secondary/40 hover:shadow-md transition-shadow bg-secondary-container/10">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-label-md text-label-md text-secondary font-bold">
+                  Seu Lucro no Gateway (Spread)
+                </span>
+                <span className="p-1.5 rounded-lg bg-secondary-container/60 text-secondary">
+                  <span className="material-symbols-outlined text-[20px]">trending_up</span>
+                </span>
+              </div>
+              <div className="mt-space-md">
+                <div className="flex items-baseline gap-1">
+                  <span className="font-label-md text-label-md text-secondary font-semibold">
+                    R$
+                  </span>
+                  <span className="font-numeric-lg text-numeric-lg text-secondary font-bold tracking-tight">
+                    {NEXTPAY_ACCOUNT.gatewayProfitMonthFormatted}
+                  </span>
+                </div>
+                <p className="font-body-sm text-body-sm text-on-surface-variant mt-1 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[15px] text-secondary">
+                    verified
+                  </span>
+                  Margem: 1,00% + R$ 0,49 por venda
+                </p>
+              </div>
+            </div>
+            <div className="mt-space-lg pt-space-sm flex items-center justify-between text-body-sm font-body-sm border-t border-surface-container/60 pt-2">
+              <span className="text-on-surface-variant">Simulador de Lucro:</span>
+              <span className="font-semibold text-secondary/60 flex items-center gap-1 cursor-not-allowed text-xs">
+                <span>Simular Venda</span>
+                <span className="text-[9px] uppercase px-1 rounded bg-surface-container-highest text-outline">
+                  Em breve
+                </span>
+              </span>
+            </div>
+          </div>
+
+          {/* Card 3: A Liberar / Antecipações */}
           <div className="rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between border border-surface-container/60 hover:shadow-md transition-shadow">
             <div>
               <div className="flex items-center justify-between">
                 <span className="font-label-md text-label-md text-on-surface-variant font-medium">
-                  A Liberar (Cartão / Parcelado)
+                  A Liberar (Cartão 32 dias)
                 </span>
                 <span className="p-1.5 rounded-lg bg-surface-container text-primary">
                   <span className="material-symbols-outlined text-[20px]">credit_card</span>
@@ -145,38 +182,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     R$
                   </span>
                   <span className="font-numeric-lg text-numeric-lg text-on-surface font-bold tracking-tight">
-                    9.840,00
+                    12.700,00
                   </span>
                 </div>
                 <p className="font-body-sm text-body-sm text-on-surface-variant mt-1 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[15px] text-outline">schedule</span>
-                  Fluxo contratado D+30 / D+14
+                  <span className="material-symbols-outlined text-[15px] text-outline">
+                    schedule
+                  </span>
+                  Fluxo padrão de liquidação D+32
                 </p>
               </div>
             </div>
             <div className="mt-space-lg pt-space-sm flex items-center justify-between text-body-sm font-body-sm border-t border-surface-container/60 pt-2">
               <span className="text-on-surface-variant">Antecipação pré-aprovada:</span>
-              <button
-                type="button"
-                onClick={() =>
-                  onShowToast('Proposta de antecipação D+1 no valor de R$ 8.920,00 enviada para análise Asaas')
-                }
-                className="font-semibold text-primary hover:underline"
+              <span
+                className="font-semibold text-primary/60 flex items-center gap-1 cursor-not-allowed text-xs"
+                title="Em breve"
               >
-                R$ 8.920,00
-              </button>
+                <span>R$ 12.484,10</span>
+                <span className="text-[9px] uppercase px-1 rounded bg-surface-container-highest text-outline">
+                  Em breve
+                </span>
+              </span>
             </div>
           </div>
 
-          {/* Card 3: Faturamento do Mês */}
+          {/* Card 4: Faturamento Total */}
           <div className="rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between border border-surface-container/60 hover:shadow-md transition-shadow">
             <div>
               <div className="flex items-center justify-between">
                 <span className="font-label-md text-label-md text-on-surface-variant font-medium">
-                  Faturamento Líquido (Mês)
+                  Faturamento Bruto (Mês)
                 </span>
-                <span className="p-1.5 rounded-lg bg-surface-container text-primary">
-                  <span className="material-symbols-outlined text-[20px]">trending_up</span>
+                <span className="p-1.5 rounded-lg bg-surface-container text-tertiary">
+                  <span className="material-symbols-outlined text-[20px]">bar_chart</span>
                 </span>
               </div>
               <div className="mt-space-md">
@@ -185,56 +224,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     R$
                   </span>
                   <span className="font-numeric-lg text-numeric-lg text-on-surface font-bold tracking-tight">
-                    42.680,00
+                    48.450,00
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="inline-flex items-center gap-0.5 text-secondary font-label-md text-label-md font-semibold bg-secondary-container/40 px-1.5 py-0.5 rounded">
                     <span className="material-symbols-outlined text-[14px]">arrow_upward</span>
-                    +18.4%
+                    +22.4%
                   </span>
                   <span className="font-body-sm text-body-sm text-outline">vs mês anterior</span>
                 </div>
               </div>
             </div>
-            <div className="mt-space-lg pt-space-sm flex items-center justify-between font-body-sm text-body-sm border-t border-surface-container/60 pt-2">
-              <span className="text-on-surface-variant">Taxas retidas (Gateway):</span>
-              <span className="font-numeric-md text-numeric-md font-semibold text-on-surface">
-                R$ 1.180,45
-              </span>
-            </div>
-          </div>
-
-          {/* Card 4: Cobranças Pendentes */}
-          <div className="rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between border border-surface-container/60 hover:shadow-md transition-shadow">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="font-label-md text-label-md text-on-surface-variant font-medium">
-                  Cobranças Pendentes
-                </span>
-                <span className="p-1.5 rounded-lg bg-surface-container-high text-on-surface-variant">
-                  <span className="material-symbols-outlined text-[20px]">pending_actions</span>
-                </span>
-              </div>
-              <div className="mt-space-md">
-                <div className="flex items-baseline gap-1">
-                  <span className="font-label-md text-label-md text-on-surface-variant font-semibold">
-                    R$
-                  </span>
-                  <span className="font-numeric-lg text-numeric-lg text-on-surface font-bold tracking-tight">
-                    3.120,00
-                  </span>
-                </div>
-                <p className="font-body-sm text-body-sm text-on-surface-variant mt-1 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[15px] text-outline">group</span>
-                  8 clientes com link ativo / boleto
-                </p>
-              </div>
-            </div>
             <div className="mt-space-lg pt-space-sm flex items-center justify-between border-t border-surface-container/60 pt-2">
-              <span className="font-body-sm text-body-sm text-outline">Avisos automáticos:</span>
+              <span className="font-body-sm text-body-sm text-outline">Cobranças Ativas:</span>
               <span className="inline-flex items-center px-2 py-0.5 rounded font-label-sm text-label-sm bg-surface-container-highest text-primary font-medium">
-                WhatsApp Ativo
+                WhatsApp & Pix Ativos
               </span>
             </div>
           </div>
@@ -242,16 +247,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* SEÇÃO GRÁFICA & CONVERSÃO CENTRAL */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-md">
-          {/* Bloco Gráfico Esquerdo: Volume 30 Dias & Distribuição de Canais (8 Cols) */}
+          {/* Volume 30 Dias (8 cols) */}
           <div className="lg:col-span-8 rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between border border-surface-container/60">
             <div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-space-sm pb-space-md">
                 <div>
-                  <h2 className="font-headline-sm text-headline-sm text-on-surface">
+                  <h2 className="font-headline-sm text-headline-sm text-on-surface font-bold">
                     Volume & Distribuição por Método
                   </h2>
                   <p className="font-body-sm text-body-sm text-on-surface-variant">
-                    Desempenho consolidado de liquidação nos últimos {selectedPeriod} dias
+                    Desempenho consolidado de liquidação com retenção de spread NextPay (
+                    {selectedPeriod} dias)
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 bg-surface-container-low p-1 rounded-lg border border-surface-container">
@@ -259,10 +265,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <button
                       key={period}
                       type="button"
-                      onClick={() => {
-                        setSelectedPeriod(period);
-                        onShowToast(`Intervalo ajustado para ${period} dias`);
-                      }}
+                      onClick={() => setSelectedPeriod(period)}
                       className={`px-2.5 py-1 rounded font-label-sm text-label-sm transition-all ${
                         selectedPeriod === period
                           ? 'bg-surface-container-lowest text-primary font-semibold shadow-xs'
@@ -285,7 +288,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                   </div>
                   <span className="font-numeric-md text-numeric-md font-semibold text-on-surface mt-0.5">
-                    58% <span className="text-outline font-normal">(R$ 24.754)</span>
+                    58% <span className="text-outline font-normal">(R$ 28.100)</span>
                   </span>
                 </div>
                 <div className="flex flex-col">
@@ -296,7 +299,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                   </div>
                   <span className="font-numeric-md text-numeric-md font-semibold text-on-surface mt-0.5">
-                    34% <span className="text-outline font-normal">(R$ 14.511)</span>
+                    34% <span className="text-outline font-normal">(R$ 16.470)</span>
                   </span>
                 </div>
                 <div className="flex flex-col">
@@ -307,12 +310,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </span>
                   </div>
                   <span className="font-numeric-md text-numeric-md font-semibold text-on-surface mt-0.5">
-                    8% <span className="text-outline font-normal">(R$ 3.415)</span>
+                    8% <span className="text-outline font-normal">(R$ 3.880)</span>
                   </span>
                 </div>
               </div>
 
-              {/* Gráfico SVG Vetorial de Alta Precisão */}
+              {/* Gráfico SVG */}
               <div className="h-56 w-full pt-space-md relative flex flex-col justify-end">
                 <svg
                   className="w-full h-full overflow-visible"
@@ -330,7 +333,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </linearGradient>
                   </defs>
 
-                  {/* Horizontal grid lines */}
                   <line
                     stroke="#c3c6d7"
                     strokeDasharray="4 4"
@@ -367,7 +369,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     y2="170"
                   ></line>
 
-                  {/* Pix Curve (Green) */}
                   <path
                     d="M 0,140 Q 60,110 120,125 T 240,80 T 360,95 T 480,45 T 600,60 T 740,25 L 740,170 L 0,170 Z"
                     fill="url(#pixGradient)"
@@ -380,7 +381,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     strokeWidth="2.5"
                   ></path>
 
-                  {/* Card Curve (Purple) */}
                   <path
                     d="M 0,155 Q 60,140 120,135 T 240,120 T 360,110 T 480,90 T 600,105 T 740,75 L 740,170 L 0,170 Z"
                     fill="url(#cardGradient)"
@@ -393,8 +393,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     strokeWidth="2"
                   ></path>
 
-                  {/* Final highlighted dot */}
-                  <circle cx="740" cy="25" fill="#006c49" r="4.5" stroke="#ffffff" strokeWidth="2"></circle>
+                  <circle
+                    cx="740"
+                    cy="25"
+                    fill="#006c49"
+                    r="4.5"
+                    stroke="#ffffff"
+                    strokeWidth="2"
+                  ></circle>
                 </svg>
 
                 <div className="flex justify-between items-center text-label-sm font-label-sm text-outline pt-2 px-1">
@@ -412,23 +418,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <span className="material-symbols-outlined text-[16px] text-secondary">
                   check_circle
                 </span>
-                Taxa Pix contratada: <strong className="text-on-surface">R$ 0,99 fixo</strong> por recebimento
+                Taxa Pix cobrada: <strong className="text-on-surface">1% + R$ 2,48</strong> (Lucro
+                NextPay: 1% + R$ 0,49)
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[16px] text-tertiary">
                   credit_score
                 </span>
-                Cartão: <strong className="text-on-surface">2.99% + R$ 0,49</strong>
+                Cartão: <strong className="text-on-surface">3.99% + R$ 0,98</strong>
               </span>
             </div>
           </div>
 
-          {/* Bloco Direito: Funil de Conversão & Eficiência de Cobrança (4 Cols) */}
+          {/* Funil & Conversão (4 cols) */}
           <div className="lg:col-span-4 rounded-xl bg-surface-container-lowest p-space-lg shadow-sm flex flex-col justify-between border border-surface-container/60">
             <div>
               <div className="flex items-center justify-between pb-space-sm">
                 <div>
-                  <h2 className="font-headline-sm text-headline-sm text-on-surface">
+                  <h2 className="font-headline-sm text-headline-sm text-on-surface font-bold">
                     Taxa de Conversão
                   </h2>
                   <p className="font-body-sm text-body-sm text-on-surface-variant">
@@ -484,7 +491,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div>
                   <div className="flex justify-between items-center text-body-sm font-body-sm mb-1">
                     <span className="text-on-surface">Cobranças Geradas (148 un.)</span>
-                    <span className="font-numeric-md font-semibold text-on-surface">R$ 46.800</span>
+                    <span className="font-numeric-md font-semibold text-on-surface">R$ 48.450</span>
                   </div>
                   <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
                     <div className="bg-primary h-full rounded-full" style={{ width: '100%' }}></div>
@@ -496,16 +503,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <span className="font-numeric-md font-semibold text-on-surface">93.9%</span>
                   </div>
                   <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
-                    <div className="bg-tertiary h-full rounded-full" style={{ width: '93.9%' }}></div>
+                    <div
+                      className="bg-tertiary h-full rounded-full"
+                      style={{ width: '93.9%' }}
+                    ></div>
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between items-center text-body-sm font-body-sm mb-1">
                     <span className="text-on-surface">Pagas e Compensadas (132 un.)</span>
-                    <span className="font-numeric-md font-semibold text-secondary">89.2% Global</span>
+                    <span className="font-numeric-md font-semibold text-secondary">
+                      89.2% Global
+                    </span>
                   </div>
                   <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
-                    <div className="bg-secondary h-full rounded-full" style={{ width: '89.2%' }}></div>
+                    <div
+                      className="bg-secondary h-full rounded-full"
+                      style={{ width: '89.2%' }}
+                    ></div>
                   </div>
                 </div>
               </div>
@@ -516,15 +531,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Boletos vencidos nos 30d:
               </span>
               <span className="font-label-md text-label-md font-semibold text-error flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">warning</span>
-                3 pendências
+                <span className="material-symbols-outlined text-[16px]">warning</span>3 pendências
               </span>
             </div>
           </div>
         </div>
 
-        {/* PAINEL DE AÇÕES RÁPIDAS & OPERAÇÃO */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+        {/* 4 FAST ACTION TILES */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-md">
+          <div
+            className="rounded-xl bg-surface-container-lowest p-space-md shadow-sm flex items-center gap-space-md border border-surface-container/60 opacity-60 cursor-not-allowed select-none"
+            title="Em breve"
+          >
+            <div className="h-12 w-12 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[24px]">calculate</span>
+            </div>
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h3 className="font-title-md text-title-md text-on-surface font-bold">
+                  Simular Venda
+                </h3>
+                <span className="text-[9px] uppercase px-1 rounded bg-surface-container-highest text-outline font-semibold">
+                  Em breve
+                </span>
+              </div>
+              <p className="font-body-sm text-xs text-on-surface-variant truncate">
+                Calcule o spread de 1% + R$ 0,49
+              </p>
+            </div>
+          </div>
+
           <div
             onClick={() => onNavigate('cobrancas-e-links')}
             className="rounded-xl bg-surface-container-lowest p-space-md shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-center gap-space-md group border border-surface-container/60"
@@ -533,11 +569,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span className="material-symbols-outlined text-[24px]">link</span>
             </div>
             <div className="flex flex-col min-w-0">
-              <h3 className="font-title-md text-title-md text-on-surface group-hover:text-primary transition-colors">
-                Link Rápido de Pagamento
+              <h3 className="font-title-md text-title-md text-on-surface group-hover:text-primary transition-colors font-semibold">
+                Link de Pagamento
               </h3>
-              <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                Crie um link compartilhável com valor fixo ou parcelado
+              <p className="font-body-sm text-xs text-on-surface-variant truncate">
+                Compartilhe por WhatsApp e redes
               </p>
             </div>
             <span className="material-symbols-outlined text-outline ml-auto group-hover:translate-x-1 transition-transform">
@@ -553,11 +589,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span className="material-symbols-outlined text-[24px]">qr_code</span>
             </div>
             <div className="flex flex-col min-w-0">
-              <h3 className="font-title-md text-title-md text-on-surface group-hover:text-secondary transition-colors">
-                Cobrança Pix Dinâmica
+              <h3 className="font-title-md text-title-md text-on-surface group-hover:text-secondary transition-colors font-semibold">
+                Pix Dinâmico
               </h3>
-              <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                QR Code instantâneo com conciliação automática
+              <p className="font-body-sm text-xs text-on-surface-variant truncate">
+                QR Code com baixa D+0
               </p>
             </div>
             <span className="material-symbols-outlined text-outline ml-auto group-hover:translate-x-1 transition-transform">
@@ -566,18 +602,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div
-            onClick={() => onNavigate('assinaturas')}
+            onClick={() => onNavigate('clientes')}
             className="rounded-xl bg-surface-container-lowest p-space-md shadow-sm hover:shadow-md transition-shadow cursor-pointer flex items-center gap-space-md group border border-surface-container/60"
           >
             <div className="h-12 w-12 rounded-lg bg-tertiary text-on-tertiary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <span className="material-symbols-outlined text-[24px]">calendar_month</span>
+              <span className="material-symbols-outlined text-[24px]">group</span>
             </div>
             <div className="flex flex-col min-w-0">
-              <h3 className="font-title-md text-title-md text-on-surface group-hover:text-tertiary transition-colors">
-                Emitir Carnê ou Recorrência
+              <h3 className="font-title-md text-title-md text-on-surface group-hover:text-tertiary transition-colors font-semibold">
+                Meus Clientes
               </h3>
-              <p className="font-body-sm text-body-sm text-on-surface-variant truncate">
-                Assinaturas mensais ou cobranças em lote
+              <p className="font-body-sm text-xs text-on-surface-variant truncate">
+                Gestão da base e históricos
               </p>
             </div>
             <span className="material-symbols-outlined text-outline ml-auto group-hover:translate-x-1 transition-transform">
@@ -586,19 +622,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* TABELA DE TRANSAÇÕES RECENTES */}
+        {/* TABELA DE TRANSAÇÕES RECENTES COM LUCRO DO GATEWAY */}
         <div className="rounded-xl bg-surface-container-lowest shadow-sm overflow-hidden border border-surface-container/60">
           <div className="p-space-lg flex flex-col lg:flex-row items-start lg:items-center justify-between gap-space-md">
             <div>
-              <h2 className="font-headline-sm text-headline-sm text-on-surface">
-                Extrato e Transações Recentes
+              <h2 className="font-headline-sm text-headline-sm text-on-surface font-bold">
+                Extrato, Transações & Lucro NextPay
               </h2>
               <p className="font-body-sm text-body-sm text-on-surface-variant">
-                Lançamentos brutos, retenção da plataforma e liquidação líquida
+                Lançamentos brutos, taxa aplicada ao lojista e{' '}
+                <strong>seu ganho líquido (spread)</strong>
               </p>
             </div>
 
-            {/* Filter buttons */}
             <div className="flex flex-wrap items-center gap-space-xs bg-surface-container-low p-1 rounded-lg border border-surface-container">
               {[
                 { id: 'todos', label: 'Todos' },
@@ -632,17 +668,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               >
                 Pagas
               </button>
-              <button
-                type="button"
-                onClick={() => setTxFilter('pendentes')}
-                className={`px-3 py-1.5 rounded font-label-md text-label-md transition-colors ${
-                  txFilter === 'pendentes'
-                    ? 'bg-surface-container-lowest text-primary font-semibold shadow-xs'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
-                Pendentes
-              </button>
             </div>
           </div>
 
@@ -672,8 +697,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <th className="py-3 px-space-md font-semibold">Método</th>
                   <th className="py-3 px-space-md font-semibold">Data / Hora</th>
                   <th className="py-3 px-space-md font-semibold text-right">Valor Bruto</th>
-                  <th className="py-3 px-space-md font-semibold text-right">Taxa Gateway</th>
-                  <th className="py-3 px-space-md font-semibold text-right">Valor Líquido</th>
+                  <th className="py-3 px-space-md font-semibold text-right">Taxa Cobrada</th>
+                  <th className="py-3 px-space-md font-semibold text-right text-secondary">
+                    Seu Lucro
+                  </th>
+                  <th className="py-3 px-space-md font-semibold text-right">Líquido Lojista</th>
                   <th className="py-3 px-space-lg font-semibold text-center">Status</th>
                   <th className="py-3 px-space-sm font-semibold text-center w-10"></th>
                 </tr>
@@ -710,16 +738,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           tx.method === 'Pix'
                             ? 'bg-secondary-container/40 text-on-secondary-container'
                             : tx.method === 'Cartão'
-                            ? 'bg-tertiary-fixed text-on-tertiary-fixed'
-                            : 'bg-primary-fixed text-on-primary-fixed'
+                              ? 'bg-tertiary-fixed text-on-tertiary-fixed'
+                              : 'bg-primary-fixed text-on-primary-fixed'
                         }`}
                       >
                         <span className="material-symbols-outlined text-[14px]">
                           {tx.method === 'Pix'
                             ? 'qr_code_2'
                             : tx.method === 'Cartão'
-                            ? 'credit_card'
-                            : 'receipt'}
+                              ? 'credit_card'
+                              : 'receipt'}
                         </span>
                         {tx.methodDetail}
                       </span>
@@ -734,20 +762,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       {tx.gatewayFeeFormatted}
                     </td>
                     <td className="py-space-md px-space-md text-right font-numeric-md text-numeric-md font-bold text-secondary whitespace-nowrap">
+                      {tx.gatewayProfitFormatted}
+                    </td>
+                    <td className="py-space-md px-space-md text-right font-numeric-md text-numeric-md font-bold text-on-surface whitespace-nowrap">
                       {tx.netAmountFormatted}
                     </td>
                     <td className="py-space-md px-space-lg text-center whitespace-nowrap">
                       <span
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-label-sm text-label-sm font-semibold ${
-                          tx.status === 'Liquidado'
+                          tx.status === 'Liquidado' || tx.status === 'Confirmado'
                             ? 'bg-secondary-container text-on-secondary-container'
-                            : tx.status === 'Confirmado'
-                            ? 'bg-secondary-container text-on-secondary-container'
-                            : tx.status === 'Previsto D+30'
-                            ? 'bg-tertiary-fixed text-on-tertiary-fixed'
-                            : tx.status === 'Vencido'
-                            ? 'bg-error-container text-on-error-container'
-                            : 'bg-surface-container-highest text-on-surface-variant'
+                            : tx.status === 'Previsto D+32'
+                              ? 'bg-tertiary-fixed text-on-tertiary-fixed'
+                              : tx.status === 'Vencido'
+                                ? 'bg-error-container text-on-error-container'
+                                : 'bg-surface-container-highest text-on-surface-variant'
                         }`}
                       >
                         <span
@@ -755,10 +784,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             tx.status === 'Liquidado' || tx.status === 'Confirmado'
                               ? 'bg-secondary'
                               : tx.status === 'Vencido'
-                              ? 'bg-error'
-                              : tx.status === 'Previsto D+30'
-                              ? 'bg-tertiary'
-                              : 'bg-outline'
+                                ? 'bg-error'
+                                : tx.status === 'Previsto D+32'
+                                  ? 'bg-tertiary'
+                                  : 'bg-outline'
                           }`}
                         ></span>
                         {tx.status}
@@ -778,30 +807,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 ))}
               </tbody>
             </table>
-          </div>
-
-          {/* Footer pagination */}
-          <div className="p-space-md bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm text-body-sm font-body-sm text-on-surface-variant border-t border-surface-container">
-            <span>
-              Mostrando <strong>{filteredTransactions.length}</strong> de{' '}
-              <strong>148</strong> transações no período selecionado
-            </span>
-            <div className="flex items-center gap-space-xs">
-              <button
-                type="button"
-                className="px-2.5 py-1 rounded bg-surface-container-lowest text-outline hover:text-on-surface shadow-xs disabled:opacity-50"
-                disabled
-              >
-                Anterior
-              </button>
-              <span className="px-2 font-semibold text-on-surface">Página 1 de 30</span>
-              <button
-                type="button"
-                className="px-2.5 py-1 rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container-high shadow-xs"
-              >
-                Próxima
-              </button>
-            </div>
           </div>
         </div>
       </div>

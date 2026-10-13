@@ -15,8 +15,11 @@ interface NewChargeModalProps {
 export const NewChargeModal: React.FC<NewChargeModalProps> = ({
   isOpen,
   onClose,
-  onChargeCreated,
-  onShowToast,
+  _onChargeCreated,
+  _onShowToast,
+}: NewChargeModalProps & {
+  _onChargeCreated?: NewChargeModalProps['onChargeCreated'];
+  _onShowToast?: NewChargeModalProps['onShowToast'];
 }) => {
   const [clientName, setClientName] = useState('');
   const [description, setDescription] = useState('');
@@ -25,30 +28,6 @@ export const NewChargeModal: React.FC<NewChargeModalProps> = ({
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
 
   if (!isOpen) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const num = parseFloat(amount);
-    if (!clientName.trim() || !description.trim() || isNaN(num) || num <= 0) {
-      onShowToast('Preencha os campos obrigatórios corretamente.');
-      return;
-    }
-
-    onChargeCreated({
-      clientName: clientName.trim(),
-      description: description.trim(),
-      amount: num,
-      method,
-    });
-
-    onShowToast(`Cobrança de R$ ${num.toFixed(2)} criada para ${clientName}!`);
-    if (sendWhatsApp) {
-      setTimeout(() => {
-        onShowToast(`Lembrete e fatura disparados via WhatsApp para ${clientName}`);
-      }, 700);
-    }
-    onClose();
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-space-md bg-slate-900/60 backdrop-blur-sm">
@@ -62,92 +41,81 @@ export const NewChargeModal: React.FC<NewChargeModalProps> = ({
           <span className="material-symbols-outlined text-[20px]">close</span>
         </button>
 
-        <div className="flex items-center gap-space-sm">
-          <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center text-primary">
-            <span className="material-symbols-outlined text-[22px]">add_circle</span>
+        <div className="flex items-center gap-space-sm border-b border-surface-container pb-space-sm">
+          <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary flex items-center justify-center font-bold">
+            <span className="material-symbols-outlined text-[22px]">receipt_long</span>
           </div>
           <div>
             <h3 className="font-headline-sm text-headline-sm text-on-surface">
               Criar Nova Cobrança
             </h3>
-            <span className="font-body-sm text-body-sm text-on-surface-variant">
-              Emissão expressa via Pix D+0, Cartão ou Boleto
-            </span>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">
+              Emissão direta com split e liquidação na subconta NextPay
+            </p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-space-md">
-          <div className="space-y-1">
-            <label className="font-label-md text-label-md font-semibold text-on-surface">
-              Cliente ou Empresa <span className="text-error">*</span>
+        <form onSubmit={(e) => e.preventDefault()} className="space-y-space-sm">
+          <div>
+            <label className="block font-label-md text-label-md text-on-surface mb-1">
+              Nome do Cliente / Pagador
             </label>
             <input
               type="text"
-              required
-              placeholder="Ex: Studio Alpha, Mariana Albuquerque..."
               value={clientName}
               onChange={(e) => setClientName(e.target.value)}
-              className="w-full bg-surface-container-low text-on-surface px-space-md py-2.5 rounded-xl border border-surface-container focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary focus:outline-none transition-all text-body-md"
+              placeholder="Ex: Amanda Silva Advocacia"
+              className="w-full bg-surface-container-low px-space-md py-2.5 rounded-xl border border-surface-container text-body-md focus:outline-primary"
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="font-label-md text-label-md font-semibold text-on-surface">
-              Descrição do Serviço / Item <span className="text-error">*</span>
+          <div>
+            <label className="block font-label-md text-label-md text-on-surface mb-1">
+              Descrição do Serviço / Produto
             </label>
             <input
               type="text"
-              required
-              placeholder="Ex: Consultoria Estratégica, Design System..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-surface-container-low text-on-surface px-space-md py-2.5 rounded-xl border border-surface-container focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary focus:outline-none transition-all text-body-md"
+              placeholder="Ex: Consultoria Mensal ou Projeto Web"
+              className="w-full bg-surface-container-low px-space-md py-2.5 rounded-xl border border-surface-container text-body-md focus:outline-primary"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-            <div className="space-y-1">
-              <label className="font-label-md text-label-md font-semibold text-on-surface">
-                Valor (R$) <span className="text-error">*</span>
+          <div className="grid grid-cols-2 gap-space-sm">
+            <div>
+              <label className="block font-label-md text-label-md text-on-surface mb-1">
+                Valor Bruto (R$)
               </label>
-              <div className="relative flex items-center">
-                <span className="absolute left-3 text-on-surface-variant font-bold text-body-md">
-                  R$
-                </span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="1"
-                  required
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="w-full bg-surface-container-low text-on-surface pl-10 pr-space-md py-2.5 rounded-xl border border-surface-container focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary focus:outline-none font-numeric-md font-bold text-body-md transition-all"
-                />
-              </div>
+              <input
+                type="text"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                className="w-full bg-surface-container-low px-space-md py-2.5 rounded-xl border border-surface-container text-body-md font-numeric-md font-bold focus:outline-primary"
+              />
             </div>
-
-            <div className="space-y-1">
-              <label className="font-label-md text-label-md font-semibold text-on-surface">
-                Método Principal
+            <div>
+              <label className="block font-label-md text-label-md text-on-surface mb-1">
+                Forma de Pagamento
               </label>
               <select
                 value={method}
-                onChange={(e) => setMethod(e.target.value as any)}
-                className="w-full bg-surface-container-low text-on-surface px-space-md py-2.5 rounded-xl border border-surface-container focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary focus:outline-none text-body-md transition-all"
+                onChange={(e) => setMethod(e.target.value as 'Pix' | 'Cartão' | 'Boleto')}
+                className="w-full bg-surface-container-low px-space-md py-2.5 rounded-xl border border-surface-container text-body-md focus:outline-primary cursor-pointer"
               >
-                <option value="Pix">Pix Dinâmico (D+0)</option>
+                <option value="Pix">Pix Instantâneo (D+0)</option>
                 <option value="Cartão">Cartão de Crédito</option>
-                <option value="Boleto">Boleto Bancário</option>
+                <option value="Boleto">Boleto Bancário CIP</option>
               </select>
             </div>
           </div>
 
-          {/* Quick automation toggle */}
-          <div className="bg-surface-container-low p-3 rounded-xl flex items-center justify-between border border-surface-container/60">
+          <div className="p-space-sm bg-surface-container-low rounded-xl flex items-center justify-between border border-surface-container/60">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[20px] text-secondary">chat</span>
+              <span className="material-symbols-outlined text-secondary text-[20px]">chat</span>
               <div>
-                <p className="font-title-md text-[13px] text-on-surface font-semibold">
+                <p className="font-label-md text-label-md text-on-surface font-semibold">
                   Disparar no WhatsApp imediatamente
                 </p>
                 <p className="font-body-sm text-[11px] text-on-surface-variant">
@@ -172,11 +140,16 @@ export const NewChargeModal: React.FC<NewChargeModalProps> = ({
               Cancelar
             </button>
             <button
-              type="submit"
-              className="px-space-lg py-2.5 rounded-xl bg-primary text-on-primary hover:bg-primary-container transition-all font-semibold text-body-md flex items-center gap-1.5 shadow-sm"
+              type="button"
+              disabled
+              title="Em breve (Fase 3)"
+              className="px-space-lg py-2.5 rounded-xl bg-surface-container-high text-on-surface-variant/70 cursor-not-allowed font-semibold text-body-md flex items-center gap-1.5 opacity-80"
             >
               <span className="material-symbols-outlined text-[18px]">bolt</span>
               <span>Emitir Cobrança Agora</span>
+              <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
+                Em breve
+              </span>
             </button>
           </div>
         </form>

@@ -12,6 +12,7 @@ import { PaymentLinksView } from './views/PaymentLinksView';
 import { CheckoutView } from './views/CheckoutView';
 import { RatesAndIntegrationsView } from './views/RatesAndIntegrationsView';
 import { SubscriptionsView } from './views/SubscriptionsView';
+import { ClientsView } from './views/ClientsView';
 import { ProductDrawer } from './components/ProductDrawer';
 import { QrPixModal } from './components/modals/QrPixModal';
 import { WithdrawModal } from './components/modals/WithdrawModal';
@@ -34,7 +35,7 @@ export default function App() {
   const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
   const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>(INITIAL_PAYMENT_LINKS);
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
-  const [availableBalance, setAvailableBalance] = useState(18420.5);
+  const [availableBalance, setAvailableBalance] = useState(48920.5);
 
   // Active item for checkout simulation
   const [checkoutItem, setCheckoutItem] = useState<ProductItem | PaymentLink | null>(null);
@@ -88,26 +89,42 @@ export default function App() {
     amount: number;
     method: 'Pix' | 'Cartão' | 'Boleto';
   }) => {
-    const fee = charge.method === 'Pix' ? 0.99 : charge.method === 'Boleto' ? 1.99 : charge.amount * 0.035;
+    const fee =
+      charge.method === 'Pix'
+        ? 2.48
+        : charge.method === 'Boleto'
+          ? charge.amount * 0.01 + 2.48
+          : charge.amount * 0.0399 + 0.98;
+
     const net = charge.amount - fee;
+    const profit = charge.method === 'Pix' ? 0.49 : charge.amount * 0.01 + 0.49;
+
     const newTx: Transaction = {
       id: `tx-${Date.now()}`,
       clientName: charge.clientName,
       clientDoc: '***.000.000-**',
       avatarInitials: charge.clientName.slice(0, 2).toUpperCase(),
       description: charge.description,
-      code: `#PAY-${Math.floor(Math.random() * 90000 + 10000)}`,
+      code: `#PAY-${Math.floor(10000 + Math.random() * 90000)}`,
       method: charge.method,
-      methodDetail: charge.method === 'Pix' ? 'Pix D+0' : charge.method === 'Cartão' ? 'Cartão 1x' : 'Boleto',
+      methodDetail:
+        charge.method === 'Pix'
+          ? 'Pix D+0 Instantâneo'
+          : charge.method === 'Cartão'
+            ? 'Cartão 1x'
+            : 'Boleto CIP',
       date: 'Agora',
       grossAmount: charge.amount,
       grossAmountFormatted: `R$ ${charge.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       gatewayFeeFormatted: `- R$ ${fee.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      gatewayProfitFormatted: `+ R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       netAmountFormatted: `R$ ${net.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       status: charge.method === 'Pix' ? 'Liquidado' : 'Aguardando',
       dueDate: 'Hoje',
     };
+
     setTransactions([newTx, ...transactions]);
+
     if (charge.method === 'Pix') {
       setAvailableBalance((prev) => prev + net);
     }
@@ -129,7 +146,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-surface font-body-md text-body-md text-on-surface antialiased flex flex-col">
-      {/* Toast Notification */}
+      {/* Toast Notification Container */}
       <div
         className={`fixed bottom-6 right-6 z-50 flex items-center gap-space-sm bg-inverse-surface text-inverse-on-surface px-space-md py-space-sm rounded-xl shadow-2xl transition-all duration-300 border border-slate-700/50 ${
           toastMessage
@@ -143,7 +160,7 @@ export default function App() {
         <span className="font-body-md text-body-md font-medium">{toastMessage}</span>
       </div>
 
-      {/* When in dedicated Checkout view, show full standalone client checkout experience */}
+      {/* Mode Switcher: Full Screen Checkout vs Backoffice */}
       {currentView === 'checkout' ? (
         <CheckoutView
           selectedItem={checkoutItem}
@@ -158,11 +175,14 @@ export default function App() {
             onNavigate={(viewId) => setCurrentView(viewId)}
             isOpenMobile={isMobileSidebarOpen}
             onCloseMobile={() => setIsMobileSidebarOpen(false)}
+            availableBalance={availableBalance}
           />
 
           <div className="lg:pl-64 flex flex-col min-h-screen">
             <Header
               onOpenNewCharge={() => setIsNewChargeModalOpen(true)}
+              onOpenNewLink={() => setCurrentView('cobrancas-e-links')}
+              onOpenSimulator={() => {}}
               onOpenCheckoutPreview={() => {
                 setCheckoutItem(null);
                 setCurrentView('checkout');
@@ -195,16 +215,18 @@ export default function App() {
                 />
               )}
 
-              {currentView === 'produtos-e-servicos' && (
-                <ProductsView
-                  products={products}
-                  onOpenDrawer={() => setIsProductDrawerOpen(true)}
-                  onOpenCheckoutWithProduct={handleOpenCheckoutWithProduct}
+              {currentView === 'clientes' && (
+                <ClientsView
                   onShowToast={showToast}
+                  onOpenNewChargeForClient={(_clientName) => {
+                    setIsNewChargeModalOpen(true);
+                  }}
                 />
               )}
 
-              {currentView === 'cobrancas-e-links' && (
+              {(currentView === 'cobrancas-e-links' ||
+                currentView === 'links-pagamento' ||
+                currentView === 'pix') && (
                 <PaymentLinksView
                   paymentLinks={paymentLinks}
                   transactions={transactions}
@@ -227,6 +249,15 @@ export default function App() {
                 />
               )}
 
+              {currentView === 'produtos-e-servicos' && (
+                <ProductsView
+                  products={products}
+                  onOpenDrawer={() => setIsProductDrawerOpen(true)}
+                  onOpenCheckoutWithProduct={handleOpenCheckoutWithProduct}
+                  onShowToast={showToast}
+                />
+              )}
+
               {currentView === 'assinaturas' && (
                 <SubscriptionsView
                   onShowToast={showToast}
@@ -234,7 +265,8 @@ export default function App() {
                 />
               )}
 
-              {(currentView === 'integracoes-e-api' || currentView === 'configuracoes-de-taxas') && (
+              {(currentView === 'integracoes-e-api' ||
+                currentView === 'configuracoes-de-taxas') && (
                 <RatesAndIntegrationsView onShowToast={showToast} />
               )}
             </main>
@@ -273,7 +305,7 @@ export default function App() {
         clientName={receiptModalData.tx?.clientName || 'Estúdio Criativo Silva'}
         amount={receiptModalData.tx?.grossAmountFormatted || 'R$ 4.250,00'}
         method={receiptModalData.tx?.methodDetail || 'Liquidação Automática Pix D+0'}
-        code={receiptModalData.tx?.code || '#ASAAS-LIQ-9842109'}
+        code={receiptModalData.tx?.code || '#NEXTPAY-LIQ-9842109'}
         onShowToast={showToast}
       />
 

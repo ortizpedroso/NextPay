@@ -95,7 +95,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
           <div>
             <div className="flex items-center gap-space-xs">
               <span className="font-label-sm text-label-sm text-tertiary uppercase tracking-widest font-semibold">
-                NexusPay Recorrência
+                NextPay Recorrência
               </span>
               <span className="text-outline">•</span>
               <span className="font-label-sm text-label-sm text-on-surface-variant">
@@ -132,7 +132,8 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
               R$ 42.620,00
             </div>
             <span className="font-body-sm text-secondary flex items-center gap-1 mt-0.5 font-medium">
-              <span className="material-symbols-outlined text-[14px]">trending_up</span> +8.5% este mês
+              <span className="material-symbols-outlined text-[14px]">trending_up</span> +8.5% este
+              mês
             </span>
           </div>
 
@@ -203,7 +204,9 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     </div>
                     <div className="flex justify-between text-body-sm">
                       <span className="text-on-surface-variant">Assinantes:</span>
-                      <span className="font-bold text-secondary">{plan.activeSubscribers} ativos</span>
+                      <span className="font-bold text-secondary">
+                        {plan.activeSubscribers} ativos
+                      </span>
                     </div>
                     <div className="flex justify-between text-body-sm">
                       <span className="text-on-surface-variant">MRR Total:</span>
@@ -215,7 +218,12 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                 <div className="flex gap-2 pt-2 border-t border-surface-container/60">
                   <button
                     type="button"
-                    onClick={() => onShowToast(`Link da assinatura "${plan.title}" copiado!`)}
+                    onClick={() => {
+                      if (navigator.clipboard) {
+                        navigator.clipboard.writeText(`https://nextpay.link/assinatura/${plan.id}`);
+                      }
+                      onShowToast(`Link da assinatura "${plan.title}" copiado!`);
+                    }}
                     className="flex-1 py-1.5 bg-primary text-on-primary rounded-lg text-xs font-semibold hover:bg-primary-container transition-colors flex items-center justify-center gap-1"
                   >
                     <span className="material-symbols-outlined text-[14px]">link</span>
@@ -223,10 +231,14 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onShowToast(`Gerenciamento do plano "${plan.title}" aberto`)}
-                    className="px-3 py-1.5 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg text-xs font-semibold transition-colors"
+                    disabled
+                    title="Em breve"
+                    className="px-2.5 py-1.5 bg-surface-container text-on-surface-variant/60 cursor-not-allowed rounded-lg text-xs font-semibold flex items-center gap-1"
                   >
-                    Gerenciar
+                    <span>Gerenciar</span>
+                    <span className="text-[9px] uppercase px-1 rounded bg-surface-container-highest text-outline">
+                      Em breve
+                    </span>
                   </button>
                 </div>
               </div>
@@ -331,12 +343,11 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     <td className="py-3 px-4 text-right">
                       <button
                         type="button"
-                        onClick={() =>
-                          onShowToast(`Lembrete e extrato reenviados para ${sub.name}`)
-                        }
-                        className="text-xs text-primary font-semibold hover:underline"
+                        disabled
+                        title="Em breve"
+                        className="text-xs text-on-surface-variant/50 cursor-not-allowed font-medium"
                       >
-                        Gerenciar
+                        Em breve
                       </button>
                     </td>
                   </tr>

@@ -13,12 +13,15 @@ interface PaymentLinksViewProps {
 
 export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   paymentLinks,
-  transactions,
+  _transactions,
   onAddPaymentLink,
   onOpenQrPix,
-  onOpenReceipt,
+  _onOpenReceipt,
   onOpenCheckoutWithLink,
   onShowToast,
+}: PaymentLinksViewProps & {
+  _transactions?: PaymentLinksViewProps['transactions'];
+  _onOpenReceipt?: PaymentLinksViewProps['onOpenReceipt'];
 }) => {
   // Generator state
   const [billingType, setBillingType] = useState<'avulsa' | 'recorrente'>('avulsa');
@@ -35,26 +38,15 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
 
   // Link filter state
   const [linkFilter, setLinkFilter] = useState<'all' | 'recorrente' | 'avulsa'>('all');
-  const [searchTable, setSearchTable] = useState('');
 
-  // Calculate net pix estimate
+  // Calculate net pix estimate using new NextPay rate (R$ 2,48 fixo por cobrança)
   const numericAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.')) || 0;
-  const pixFee = 0.99;
-  const netPix = Math.max(0, numericAmount - pixFee);
+  const pixFeeCharged = 2.48;
+  const netPix = Math.max(0, numericAmount - pixFeeCharged);
 
   const filteredLinks = paymentLinks.filter((link) => {
     if (linkFilter === 'all') return true;
     return link.type === linkFilter;
-  });
-
-  const filteredTransactions = transactions.filter((tx) => {
-    if (!searchTable) return true;
-    const q = searchTable.toLowerCase();
-    return (
-      tx.clientName.toLowerCase().includes(q) ||
-      tx.description.toLowerCase().includes(q) ||
-      tx.code.toLowerCase().includes(q)
-    );
   });
 
   const handleCreateLink = (e: React.FormEvent) => {
@@ -81,11 +73,10 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
       sales: 0,
       views: 1,
       conversionRate: '0.0%',
-      url: `https://nexuspay.link/silva-design/${cleanSlug}`,
+      url: `https://nextpay.link/silva-design/${cleanSlug}`,
     };
 
     onAddPaymentLink(newLink);
-    onShowToast(`Link de pagamento para "${newLink.title}" gerado com sucesso!`);
   };
 
   const handleCopyLink = (url: string) => {
@@ -95,34 +86,33 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
 
   const handleShareWhatsapp = (link: PaymentLink) => {
     const text = encodeURIComponent(
-      `Olá! Segue o link seguro para acerto de "${link.title}" no valor de ${link.unitPriceFormatted}: ${link.url}`
+      `Olá! Segue o link seguro NextPay para acerto de "${link.title}" no valor de ${link.unitPriceFormatted}: ${link.url}`,
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
-    onShowToast('Janela do WhatsApp aberta para compartilhamento');
   };
 
   return (
     <div className="flex flex-col w-full">
       <div className="p-4 lg:p-space-lg space-y-space-xl max-w-[1540px] mx-auto w-full">
-        {/* Top Level Header & Quick Pulse Metrics */}
+        {/* Top Level Header */}
         <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-lg">
           <div className="space-y-space-xs">
             <div className="flex items-center gap-space-sm flex-wrap">
               <span className="font-label-sm text-label-sm text-primary uppercase tracking-widest bg-surface-container-high px-space-sm py-0.5 rounded-full font-semibold">
-                Nexus Checkout v2.4
+                NextPay Checkout v2.4
               </span>
               <span className="text-on-surface-variant font-label-sm text-label-sm">•</span>
               <span className="font-label-sm text-label-sm text-secondary font-semibold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span>
-                Pix D+0 Operacional
+                Liquidação Instantânea D+0
               </span>
             </div>
             <h1 className="font-display-lg text-display-lg text-on-surface font-bold tracking-tight">
               Links de Pagamento & Cobranças
             </h1>
             <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
-              Emita links instantâneos para WhatsApp, redes ou propostas comerciais. Automatize réguas
-              com lembretes inteligentes sem taxa de emissão.
+              Emita links instantâneos para WhatsApp, redes ou propostas comerciais. Automatize
+              réguas com lembretes inteligentes sem taxa de emissão.
             </p>
           </div>
 
@@ -166,17 +156,24 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
               <span className="font-label-sm text-label-sm uppercase font-semibold">
                 Conversão Média de Links
               </span>
-              <span className="material-symbols-outlined text-[20px] text-primary">donut_large</span>
+              <span className="material-symbols-outlined text-[20px] text-primary">
+                donut_large
+              </span>
             </div>
             <div className="mt-space-sm flex items-baseline justify-between">
               <div>
-                <div className="font-numeric-lg text-numeric-lg text-on-surface font-bold">78.6%</div>
+                <div className="font-numeric-lg text-numeric-lg text-on-surface font-bold">
+                  78.6%
+                </div>
                 <span className="font-body-sm text-body-sm text-on-surface-variant">
                   48 vendas de 61 aberturas
                 </span>
               </div>
-              {/* Sparkline */}
-              <svg className="w-16 h-8 text-secondary overflow-visible" fill="none" viewBox="0 0 64 32">
+              <svg
+                className="w-16 h-8 text-secondary overflow-visible"
+                fill="none"
+                viewBox="0 0 64 32"
+              >
                 <path
                   d="M2 28L18 20L34 22L48 10L62 4"
                   stroke="currentColor"
@@ -215,9 +212,9 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
               <span className="material-symbols-outlined text-[20px] text-tertiary">tune</span>
             </div>
             <div className="mt-space-sm">
-              <div className="font-numeric-lg text-numeric-lg text-on-surface font-bold">0,89%</div>
+              <div className="font-numeric-lg text-numeric-lg text-on-surface font-bold">1,89%</div>
               <span className="font-body-sm text-body-sm text-on-surface-variant">
-                94% via Pix sem taxa de cartão
+                Com spread NextPay de 1% + R$ 0,49
               </span>
             </div>
           </div>
@@ -238,7 +235,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                   Gerador Rápido de Cobrança & Link
                 </h2>
                 <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Configure os métodos de liquidação, parcelamento e automações de lembrete em 30 segundos.
+                  Configure métodos de liquidação e automações de régua em 30 segundos.
                 </p>
               </div>
             </div>
@@ -269,7 +266,10 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
             </div>
           </div>
 
-          <form onSubmit={handleCreateLink} className="grid grid-cols-1 lg:grid-cols-12 gap-space-xl">
+          <form
+            onSubmit={handleCreateLink}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-space-xl"
+          >
             {/* Left Column: Core Data */}
             <div className="lg:col-span-7 space-y-space-lg">
               <div className="space-y-space-xs">
@@ -347,8 +347,8 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                   <span className="font-title-md text-title-md font-bold text-on-surface">
                     Formas de Recebimento Habilitadas
                   </span>
-                  <span className="font-label-sm text-label-sm text-secondary font-semibold bg-secondary-fixed/20 px-2 py-0.5 rounded-full">
-                    Liquidação Automatizada
+                  <span className="font-label-sm text-label-sm text-secondary font-semibold bg-secondary-container/20 px-2 py-0.5 rounded-full">
+                    Taxas Oficiais NextPay
                   </span>
                 </div>
 
@@ -364,11 +364,11 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                           Pix Dinâmico Instantâneo
                         </span>
                         <span className="bg-secondary-fixed text-on-secondary-fixed text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">
-                          D+0 sem taxa de link
+                          R$ 2,48
                         </span>
                       </div>
                       <p className="font-body-sm text-body-sm text-on-surface-variant">
-                        Gera QR Code exclusivo com baixa automática e webhook imediato.
+                        Compensação na hora com baixa automática NextPay D+0.
                       </p>
                     </div>
                   </div>
@@ -396,11 +396,11 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                             Cartão de Crédito
                           </span>
                           <span className="font-label-sm text-label-sm text-on-surface-variant">
-                            Taxa 2.89% + R$ 0,40
+                            Taxa 3.99% + R$ 0,98 à vista
                           </span>
                         </div>
                         <p className="font-body-sm text-body-sm text-on-surface-variant">
-                          Aceita Visa, Mastercard, Elo e American Express com antifraude ativo.
+                          Aceita Visa, Mastercard, Elo e Amex com antifraude 3DS 2.0 ativo.
                         </p>
                       </div>
                     </div>
@@ -428,9 +428,9 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                             className="w-full bg-surface-container-low text-on-surface font-body-md text-body-md py-1.5 px-space-sm rounded-lg border border-surface-container focus:outline-none focus:ring-1 focus:ring-primary"
                           >
                             <option value="1x">Até 1x (À vista)</option>
-                            <option value="3x">Até 3x</option>
-                            <option value="6x">Até 6x</option>
-                            <option value="12x">Até 12x</option>
+                            <option value="6x">Até 6x (4,49% + R$ 0,98)</option>
+                            <option value="12x">Até 12x (4,99% + R$ 0,98)</option>
+                            <option value="21x">Até 21x (5,29% + R$ 0,98)</option>
                           </select>
                         </div>
                         <div>
@@ -478,7 +478,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                             Boleto Bancário Registrado
                           </span>
                           <span className="font-label-sm text-label-sm text-on-surface-variant">
-                            R$ 1,99 por liquidação
+                            1% + R$ 2,48 por liquidação
                           </span>
                         </div>
                         <p className="font-body-sm text-body-sm text-on-surface-variant">
@@ -496,46 +496,23 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                       <div className="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-tertiary"></div>
                     </label>
                   </div>
-
-                  {enableBoleto && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md pt-space-xs border-t border-surface-container text-body-sm">
-                      <div>
-                        <label className="font-label-sm text-label-sm text-on-surface-variant block mb-1">
-                          Desconto por pontualidade
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="Ex: 5% até 3 dias antes"
-                          className="w-full bg-surface-container-low text-on-surface py-1.5 px-space-sm rounded-lg border border-surface-container focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                      </div>
-                      <div>
-                        <label className="font-label-sm text-label-sm text-on-surface-variant block mb-1">
-                          Multa após vencimento
-                        </label>
-                        <input
-                          type="text"
-                          defaultValue="2% + 0,033% ao dia"
-                          className="w-full bg-surface-container-low text-on-surface py-1.5 px-space-sm rounded-lg border border-surface-container focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
 
-            {/* Right Column: Automação & Régua de Comunicação */}
+            {/* Right Column: Automação & Régua */}
             <div className="lg:col-span-5 flex flex-col justify-between space-y-space-lg">
               <div className="bg-surface-container-low/70 p-space-md rounded-2xl space-y-space-md border border-surface-container">
                 <div className="flex items-center gap-space-xs text-primary">
-                  <span className="material-symbols-outlined text-[20px]">notifications_active</span>
+                  <span className="material-symbols-outlined text-[20px]">
+                    notifications_active
+                  </span>
                   <span className="font-title-md text-title-md font-bold text-on-surface">
                     Régua Automática de Cobrança
                   </span>
                 </div>
                 <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Reduza em até 40% a inadimplência com disparos inteligentes sem precisar mandar mensagem manual.
+                  Disparos inteligentes sem precisar mandar mensagem manual.
                 </p>
 
                 <div className="space-y-space-sm">
@@ -571,10 +548,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                           <input type="checkbox" defaultChecked className="rounded text-primary" />
                           <span>Alerta no dia do vencimento</span>
                         </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" defaultChecked className="rounded text-primary" />
-                          <span>Cobrança amigável 1 dia após atraso</span>
-                        </label>
                       </div>
                     )}
                   </div>
@@ -597,9 +570,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                         className="w-4 h-4 text-primary rounded"
                       />
                     </div>
-                    <p className="text-body-sm text-on-surface-variant pl-6">
-                      Envia fatura em PDF e botão de pagamento direto na caixa de entrada do cliente.
-                    </p>
                   </div>
                 </div>
 
@@ -610,7 +580,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                   </span>
                   <div className="flex items-center justify-between bg-surface-container-lowest px-3 py-2 rounded-lg font-body-sm text-on-surface overflow-hidden border border-surface-container">
                     <span className="truncate font-mono text-[12px] text-primary">
-                      nexuspay.link/silva-design/consultoria-ux
+                      nextpay.link/silva-design/consultoria-ux
                     </span>
                     <span className="material-symbols-outlined text-[16px] text-outline shrink-0 ml-2">
                       lock
@@ -622,18 +592,22 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
               {/* Action Buttons */}
               <div className="pt-space-md flex flex-col sm:flex-row items-center gap-space-sm">
                 <button
-                  type="submit"
-                  className="w-full flex-1 flex items-center justify-center gap-space-xs bg-primary text-on-primary hover:bg-primary-container px-space-lg py-space-md rounded-xl font-title-md text-title-md shadow-md transition-all font-semibold"
+                  type="button"
+                  disabled
+                  title="Em breve (Fase 2)"
+                  className="w-full flex-1 flex items-center justify-center gap-space-xs bg-surface-container-high text-on-surface-variant/70 cursor-not-allowed px-space-lg py-space-md rounded-xl font-title-md text-title-md shadow-none opacity-80 font-semibold"
                 >
                   <span className="material-symbols-outlined text-[20px]">bolt</span>
                   <span>Gerar Link & Ativar Notificações</span>
+                  <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
+                    Em breve
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setTitle('');
                     setAmount('0,00');
-                    onShowToast('Campos limpos');
                   }}
                   className="w-full sm:w-auto px-space-md py-space-md bg-surface-container-low hover:bg-surface-container-high text-on-surface rounded-xl font-title-md text-body-md transition-all border border-surface-container font-medium"
                 >
@@ -644,7 +618,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
           </form>
         </section>
 
-        {/* SECTION: Links Ativos & Vitrine de Pagamento */}
+        {/* SECTION: Links Ativos */}
         <section className="space-y-space-md">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
             <div>
@@ -740,7 +714,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Conversion Metrics Strip */}
                   <div className="grid grid-cols-3 gap-1 text-center pt-1 font-body-sm">
                     <div className="bg-surface-container-lowest p-1.5 rounded-lg border border-surface-container">
                       <div className="font-numeric-md font-semibold text-on-surface">
@@ -824,211 +797,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                 </div>
               </article>
             ))}
-          </div>
-        </section>
-
-        {/* SECTION: Tabela Detalhada de Cobranças Emitidas */}
-        <section className="bg-surface-container-lowest rounded-2xl shadow-sm p-space-lg space-y-space-md border border-surface-container/60">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
-            <div>
-              <h2 className="font-headline-md text-headline-md font-bold text-on-surface">
-                Cobranças Emitidas em Tempo Real
-              </h2>
-              <p className="font-body-sm text-body-sm text-on-surface-variant">
-                Acompanhe confirmações bancárias e dispare lembretes de cobrança com 1 clique.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-space-sm">
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-2.5 top-2 text-[18px] text-outline">
-                  search
-                </span>
-                <input
-                  type="text"
-                  placeholder="Filtrar por cliente ou ID..."
-                  value={searchTable}
-                  onChange={(e) => setSearchTable(e.target.value)}
-                  className="bg-surface-container-low text-body-sm rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary w-48 lg:w-64 border border-surface-container"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => onShowToast('Exportando relatório CSV de cobranças...')}
-                className="flex items-center gap-1 bg-surface-container-low hover:bg-surface-container-high px-space-sm py-1.5 rounded-lg text-body-sm font-medium text-on-surface border border-surface-container"
-              >
-                <span className="material-symbols-outlined text-[18px]">download</span>
-                <span>Exportar</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Ledger Table */}
-          <div className="overflow-x-auto rounded-xl">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm uppercase tracking-wider">
-                  <th className="py-3 px-space-md font-semibold">Cliente & Descrição</th>
-                  <th className="py-3 px-space-md font-semibold">Método</th>
-                  <th className="py-3 px-space-md font-semibold">Vencimento</th>
-                  <th className="py-3 px-space-md font-semibold text-right">Valor</th>
-                  <th className="py-3 px-space-md font-semibold text-center">Status</th>
-                  <th className="py-3 px-space-md font-semibold text-right">Ação Rápida</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-container text-body-sm font-body-md text-on-surface">
-                {filteredTransactions.map((item) => (
-                  <tr key={item.id} className="hover:bg-surface-container-low/50 transition-colors">
-                    <td className="py-space-md px-space-md">
-                      <div className="flex flex-col">
-                        <span className="font-title-md text-body-md font-bold text-on-surface">
-                          {item.clientName}
-                        </span>
-                        <span className="text-body-sm text-on-surface-variant">
-                          {item.description} • {item.code}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-space-md px-space-md">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-[12px] ${
-                          item.method === 'Pix'
-                            ? 'bg-secondary-fixed/40 text-secondary'
-                            : item.method === 'Cartão'
-                            ? 'bg-primary-fixed/50 text-primary'
-                            : 'bg-tertiary-fixed/40 text-tertiary'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[14px]">
-                          {item.method === 'Pix'
-                            ? 'qr_code_2'
-                            : item.method === 'Cartão'
-                            ? 'credit_card'
-                            : 'receipt'}
-                        </span>
-                        {item.methodDetail}
-                      </span>
-                    </td>
-                    <td
-                      className={`py-space-md px-space-md font-medium ${
-                        item.status === 'Vencido' ? 'text-error' : 'text-on-surface'
-                      }`}
-                    >
-                      {item.dueDate || item.date}
-                      {item.dueDateNote && (
-                        <span className="text-[11px] block font-normal text-error/80">
-                          ({item.dueDateNote})
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-space-md px-space-md text-right font-numeric-md font-bold">
-                      {item.grossAmountFormatted}
-                    </td>
-                    <td className="py-space-md px-space-md text-center">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-label-sm text-label-sm font-semibold uppercase ${
-                          item.status === 'Vencido'
-                            ? 'bg-error-container text-on-error-container'
-                            : item.status === 'Liquidado'
-                            ? 'bg-secondary-fixed/50 text-on-secondary-fixed'
-                            : 'bg-surface-container-high text-on-surface-variant'
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            item.status === 'Vencido'
-                              ? 'bg-error animate-pulse'
-                              : item.status === 'Liquidado'
-                              ? 'bg-secondary'
-                              : 'bg-outline'
-                          }`}
-                        ></span>
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="py-space-md px-space-md text-right">
-                      {item.status === 'Vencido' ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onShowToast(`Cobrança reenviada para ${item.clientName} com aviso amigável`)
-                          }
-                          className="inline-flex items-center gap-1 bg-error/10 hover:bg-error/20 text-error px-space-sm py-1.5 rounded-lg font-label-md text-label-md font-semibold transition-all shadow-sm"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">
-                            outgoing_mail
-                          </span>
-                          <span>Reenviar Cobrança</span>
-                        </button>
-                      ) : item.status === 'Pendente' || item.status === 'Aguardando' ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onShowToast(`Lembrete WhatsApp disparado para ${item.clientName}!`)
-                          }
-                          className="inline-flex items-center gap-1 bg-surface-container-low hover:bg-surface-container-high text-on-surface px-space-sm py-1.5 rounded-lg font-label-md text-label-md font-semibold transition-all border border-surface-container"
-                        >
-                          <span className="material-symbols-outlined text-[16px] text-secondary">
-                            chat
-                          </span>
-                          <span>Lembrar no Whats</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => onOpenReceipt(item)}
-                          className="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary px-space-sm py-1.5 rounded-lg font-label-md text-label-md transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">
-                            receipt_long
-                          </span>
-                          <span>Ver Comprovante</span>
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Footer Pagination */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm pt-space-sm text-body-sm text-on-surface-variant border-t border-surface-container">
-            <span>
-              Mostrando {filteredTransactions.length} de {transactions.length} cobranças emitidas
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                disabled
-                className="px-2.5 py-1 rounded bg-surface-container-low text-on-surface font-medium disabled:opacity-40"
-              >
-                Anterior
-              </button>
-              <button
-                type="button"
-                className="px-2.5 py-1 rounded bg-primary text-on-primary font-semibold"
-              >
-                1
-              </button>
-              <button
-                type="button"
-                className="px-2.5 py-1 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface font-medium"
-              >
-                2
-              </button>
-              <button
-                type="button"
-                className="px-2.5 py-1 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface font-medium"
-              >
-                3
-              </button>
-              <button
-                type="button"
-                className="px-2.5 py-1 rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface font-medium"
-              >
-                Próximo
-              </button>
-            </div>
           </div>
         </section>
       </div>

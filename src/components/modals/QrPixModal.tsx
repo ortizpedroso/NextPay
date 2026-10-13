@@ -29,11 +29,6 @@ export const QrPixModal: React.FC<QrPixModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSimulatePayment = () => {
-    onShowToast(`Pagamento Pix de ${price} aprovado e liquidado via D+0 instantâneo!`);
-    onClose();
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-space-md bg-slate-900/60 backdrop-blur-sm">
       <div className="bg-surface-container-lowest max-w-sm w-full p-space-lg rounded-2xl shadow-2xl space-y-space-md text-center relative border border-surface-container">
@@ -103,12 +98,16 @@ export const QrPixModal: React.FC<QrPixModalProps> = ({
 
         <div className="flex flex-col gap-2 pt-1">
           <button
-            className="w-full py-2.5 bg-secondary text-on-secondary rounded-xl font-title-md text-body-md font-semibold hover:opacity-95 transition-all shadow-sm flex items-center justify-center gap-1.5"
-            onClick={handleSimulatePayment}
+            className="w-full py-2.5 bg-surface-container-high text-on-surface-variant/70 rounded-xl font-title-md text-body-md font-semibold cursor-not-allowed opacity-80 flex items-center justify-center gap-1.5"
+            disabled
+            title="Em breve (Fase 1)"
             type="button"
           >
             <span className="material-symbols-outlined text-[18px]">bolt</span>
-            <span>Simular Pagamento Confirmado</span>
+            <span>Aguardando Confirmação Pix</span>
+            <span className="text-[10px] uppercase px-1 rounded bg-surface-container-highest text-outline font-semibold">
+              Em breve
+            </span>
           </button>
           <button
             className="w-full py-2 bg-surface-container-low text-on-surface rounded-xl font-title-md text-body-md font-medium hover:bg-surface-container transition-all"

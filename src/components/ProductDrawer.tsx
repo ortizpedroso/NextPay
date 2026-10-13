@@ -15,7 +15,9 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
   onShowToast,
 }) => {
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<'servicos' | 'digitais' | 'recorrentes' | 'projetos'>('servicos');
+  const [category, setCategory] = useState<'servicos' | 'digitais' | 'recorrentes' | 'projetos'>(
+    'servicos',
+  );
   const [billingType, setBillingType] = useState<'avulsa' | 'recorrente'>('avulsa');
   const [price, setPrice] = useState('450,00');
   const [installments, setInstallments] = useState('12x');
@@ -48,13 +50,15 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
     const newProduct: ProductItem = {
       id: `prod-${Date.now()}`,
       title: title.trim(),
-      description: description.trim() || 'Descrição dos entregáveis e benefícios inclusos no pacote.',
+      description:
+        description.trim() || 'Descrição dos entregáveis e benefícios inclusos no pacote.',
       category,
       categoryLabel: categoryLabelMap[category],
       price: numericPrice,
       priceFormatted: `R$ ${price || '0,00'}${billingType === 'recorrente' ? '/mês' : ''}`,
       billingType,
-      installmentsText: billingType === 'recorrente' ? 'Débito recorrente mensal' : `Até ${installments} no cartão`,
+      installmentsText:
+        billingType === 'recorrente' ? 'Débito recorrente mensal' : `Até ${installments} no cartão`,
       imageUrl:
         imageUrl.trim() ||
         'https://lh3.googleusercontent.com/aida-public/AB6AXuBdOzWFlzQ-IwFq8v30Kx900QdiI2m6XjwECu_4wBONT6FbAStbJoGGNtNkwI8sab4pvYy4nS57KOIea5foq50ZI7EItbVhbrLP3nmZnhB-ES_c3yX2-DmRasBMcjm-YbnFKXUSxnh9_pmM2OnpClggsxKubahzxo9t-rDeHh_e5vEQ63qixUpkFHYrtetBY18wVCxMkm3k_GT0RFaTz1w3gcUN_hnr0tFtUveDpxiiKPQbJeAnB0M',
@@ -119,7 +123,9 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <span className="material-symbols-outlined text-[32px] text-outline">image</span>
+                    <span className="material-symbols-outlined text-[32px] text-outline">
+                      image
+                    </span>
                   )}
                 </div>
 
@@ -132,7 +138,8 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
                       {title || 'Título do Produto ou Serviço'}
                     </h3>
                     <p className="font-body-sm text-body-sm text-on-surface-variant line-clamp-2 mt-0.5">
-                      {description || 'Descrição breve de como este item agrega valor ao seu cliente...'}
+                      {description ||
+                        'Descrição breve de como este item agrega valor ao seu cliente...'}
                     </p>
                   </div>
 
@@ -143,11 +150,15 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
                       </span>
                       <span className="font-numeric-lg text-headline-sm text-on-surface font-bold">
                         R$ {price || '0,00'}
-                        {billingType === 'recorrente' && <span className="text-xs font-normal">/mês</span>}
+                        {billingType === 'recorrente' && (
+                          <span className="text-xs font-normal">/mês</span>
+                        )}
                       </span>
                     </div>
                     <span className="font-label-sm text-label-sm text-secondary font-medium">
-                      {billingType === 'recorrente' ? 'Débito recorrente' : `Até ${installments} no cartão`}
+                      {billingType === 'recorrente'
+                        ? 'Débito recorrente'
+                        : `Até ${installments} no cartão`}
                     </span>
                   </div>
                 </div>
@@ -159,7 +170,10 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
           <form id="item-form" onSubmit={handleSubmit} className="flex flex-col gap-space-md">
             {/* Field: Title */}
             <div className="flex flex-col gap-1">
-              <label className="font-label-md text-label-md text-on-surface font-semibold" htmlFor="input-title">
+              <label
+                className="font-label-md text-label-md text-on-surface font-semibold"
+                htmlFor="input-title"
+              >
                 Título do Item <span className="text-error">*</span>
               </label>
               <input
@@ -181,7 +195,11 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
                 </label>
                 <select
                   value={category}
-                  onChange={(e) => setCategory(e.target.value as any)}
+                  onChange={(e) =>
+                    setCategory(
+                      e.target.value as 'servicos' | 'digitais' | 'recorrentes' | 'projetos',
+                    )
+                  }
                   className="w-full px-space-md py-2.5 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md border border-surface-container focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary transition-all"
                 >
                   <option value="servicos">Serviço Profissional</option>
@@ -225,7 +243,10 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
             {/* Field: Base Price and Max Installments */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
               <div className="flex flex-col gap-1">
-                <label className="font-label-md text-label-md text-on-surface font-semibold" htmlFor="input-price">
+                <label
+                  className="font-label-md text-label-md text-on-surface font-semibold"
+                  htmlFor="input-price"
+                >
                   Preço Base (R$) <span className="text-error">*</span>
                 </label>
                 <div className="relative">
@@ -264,7 +285,10 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
 
             {/* Field: Description */}
             <div className="flex flex-col gap-1">
-              <label className="font-label-md text-label-md text-on-surface font-semibold" htmlFor="input-desc">
+              <label
+                className="font-label-md text-label-md text-on-surface font-semibold"
+                htmlFor="input-desc"
+              >
                 Descrição do Produto ou Serviço
               </label>
               <textarea
@@ -285,9 +309,8 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
               <div
                 onClick={() => {
                   setImageUrl(
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuBuyIQJXrgS104egwX6vtcxZk5Vl6cQU-I-F3VG8ln5qWr04iARdxvK0P-vJREauVxHmYHkjn1yn_wY2nmYoRs-reBccbmC4GjcS9ALVQxXBODFsJA6dQxnGk2JX2ss2Gdnk6e-0_QZspaf-QkY1FOQUk-sF9N9TKPAYtdJyvCZi8Tq-bxXR_rx2uMZ3nJ262wCYDOT_xLaO9eVAIsv7IyMKoVLWfJcHR79Udhk-nW8duK1BEigKFg'
+                    'https://lh3.googleusercontent.com/aida-public/AB6AXuBuyIQJXrgS104egwX6vtcxZk5Vl6cQU-I-F3VG8ln5qWr04iARdxvK0P-vJREauVxHmYHkjn1yn_wY2nmYoRs-reBccbmC4GjcS9ALVQxXBODFsJA6dQxnGk2JX2ss2Gdnk6e-0_QZspaf-QkY1FOQUk-sF9N9TKPAYtdJyvCZi8Tq-bxXR_rx2uMZ3nJ262wCYDOT_xLaO9eVAIsv7IyMKoVLWfJcHR79Udhk-nW8duK1BEigKFg',
                   );
-                  onShowToast('Imagem de capa selecionada');
                 }}
                 className="bg-surface-container-low p-space-md rounded-xl flex flex-col items-center justify-center text-center cursor-pointer hover:bg-surface-container-high transition-colors border border-dashed border-outline-variant"
               >
@@ -316,11 +339,15 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
           </button>
           <button
             type="button"
-            onClick={handleSubmit}
-            className="flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-2.5 rounded-lg font-label-md text-label-md font-semibold transition-all shadow-sm"
+            disabled
+            title="Em breve (Fase 4)"
+            className="flex items-center gap-space-xs bg-surface-container-high text-on-surface-variant/70 cursor-not-allowed px-space-lg py-2.5 rounded-lg font-label-md text-label-md font-semibold opacity-80"
           >
             <span className="material-symbols-outlined text-[18px]">check</span>
             <span>Salvar e Gerar Link</span>
+            <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
+              Em breve
+            </span>
           </button>
         </div>
       </aside>
