@@ -43,21 +43,42 @@ OBJETIVO
 Transformar o protótipo em um app funcional, com back-end próprio integrado à API do Asaas
 (gateway de pagamentos brasileiro), mantendo o visual atual.
 
+STACK DEFINIDA (não negociável — não proponha alternativas)
+- Front-end: React 19 + Vite + Tailwind CSS 4 + TypeScript (SPA).
+  Rotas: React Router v7 em modo biblioteca (BrowserRouter/createBrowserRouter), NÃO o "framework
+  mode" nem o plugin de Vite do React Router. Dados no front: TanStack Query.
+- Back-end: Node 22 + Express + TypeScript, executado com `tsx`. Validação com `zod`.
+- Banco: PostgreSQL gerenciado (Neon ou Supabase, usado apenas como Postgres) acessado
+  exclusivamente pelo Prisma ORM.
+- Testes: Vitest + Testing Library (unitários), supertest (API), Playwright (E2E).
+- PROIBIDO: Next.js, Remix, NestJS, Firebase/Firestore, SDK do Supabase, SQLite, Mongo, ORM que
+  não seja Prisma, e trocar o Vite por outro bundler.
+
+ESTRUTURA DE PASTAS ALVO
+  server.ts                 → inicia o Express (API + Vite middleware em dev, dist/ em produção)
+  server/routes/*           → rotas Express por recurso
+  server/repositories/*     → únicas funções que usam o Prisma
+  server/integrations/*     → clientes de APIs externas (Asaas)
+  server/lib/*              → utilitários do servidor (auth, erros, validação)
+  server/db.ts              → instância única do PrismaClient
+  prisma/schema.prisma, prisma/migrations/*, prisma/seed.ts
+  src/                      → front-end (views, components, api/client.ts, lib/format.ts)
+  shared/                   → tipos e schemas zod usados pelo front e pelo back
+  O tsconfig deve cobrir src/, server/, shared/ e prisma/, para que `npm run typecheck`
+  verifique front e back.
+
 REGRAS OBRIGATÓRIAS (valem para todas as fases)
 1. Preserve o design: mesmas cores, tokens de tema de src/index.css, tipografia, espaçamentos e
    textos. Só altere a aparência quando a fase pedir.
-2. Stack fixa: React 19, Vite, Tailwind 4, TypeScript estrito no front e no back. Back-end em
-   Express, arquivo `server.ts` na raiz, executado com `tsx`, servindo o Vite como middleware em
-   desenvolvimento e a pasta `dist/` em produção, na porta 3000. Não troque de framework.
-   Banco: PostgreSQL acessado SOMENTE pelo Prisma ORM (versão estável mais recente, seguindo a
-   documentação oficial dela). Conexão por `process.env.DATABASE_URL`. Nada de SQL solto.
+2. Siga a STACK DEFINIDA e a ESTRUTURA DE PASTAS acima. TypeScript em modo `strict`, sem `any`
+   implícito. O servidor escuta na porta 3000. Prisma na versão estável mais recente, seguindo a
+   documentação oficial dessa versão; conexão por `process.env.DATABASE_URL`; nada de SQL solto.
 3. Segredos (DATABASE_URL, chave do Asaas, JWT_SECRET, token de webhook) só existem no servidor, lidos de
    `process.env`. Nunca envie segredo ao navegador e nunca escreva tokens no código.
 4. Toda chamada ao Asaas acontece no servidor. O front só conversa com a nossa API em `/api/*`.
 5. Dinheiro é armazenado e trafega como inteiro em centavos (`amountCents: number`; no Prisma,
-   campo `Int`, nunca `Float`). Formatação
-   em R$ acontece só na exibição, por uma função única `formatBRL(cents)` em src/lib/format.ts.
-   Não crie campos "...Formatted" nos dados.
+   campo `Int`, nunca `Float` nem `Decimal`). Formatação em R$ acontece só na exibição, por uma
+   função única `formatBRL(cents)` em src/lib/format.ts. Não crie campos "...Formatted" nos dados.
 6. Datas trafegam em ISO 8601 (UTC) e são formatadas na exibição com Intl / pt-BR.
 7. Valide toda entrada no servidor com `zod`. Erros da API respondem
    `{ "error": { "code": string, "message": string } }` com o status HTTP correto.
@@ -110,11 +131,17 @@ passam sem erros e sem warnings de ESLint.
 FASE 1 — Back-end e persistência. Ainda sem Asaas e sem login.
 
 1. Crie server.ts (Express) conforme o contexto mestre, com:
-   - `GET /api/health` → `{ ok: true }`;
-   - middleware JSON, tratamento central de erros no formato padrão, log de cada requisição.
+   - `GET /api/health` → `{ ok: true, db: true|false }` (testa a conexão com o banco);
+   - middleware JSON, tratamento central de erros no formato padrão, log de cada requisição;
+   - em desenvolvimento, Vite em modo middleware; em produção, arquivos de dist/ com fallback
+     para index.html nas rotas que não começam com /api.
+   Scripts: "dev": "tsx watch server.ts", "build": "vite build",
+   "start": "prisma migrate deploy && NODE_ENV=production tsx server.ts".
 2. Persistência com Prisma + PostgreSQL:
    - instale `prisma` (dev) e `@prisma/client`; schema em prisma/schema.prisma, provider
      "postgresql", url de `DATABASE_URL`;
+   - se `DATABASE_URL` não estiver definida, o servidor deve falhar ao iniciar com uma mensagem
+     clara (não use banco em memória como substituto);
    - crie UM cliente Prisma compartilhado em server/db.ts (singleton, sem abrir uma conexão por
      requisição) e acesse o banco só por funções em server/repositories/*; rotas não importam o
      Prisma direto;
@@ -156,7 +183,7 @@ Critério de pronto: recarregar a página mantém os dados; nenhuma tela importa
 ```text
 FASE 2 — Rotas e autenticação.
 
-1. Adote React Router. Rotas: /login, /cadastro, /recuperar-senha, /app (dashboard),
+1. Adote React Router v7 em modo biblioteca (ver STACK DEFINIDA). Rotas: /login, /cadastro, /recuperar-senha, /app (dashboard),
    /app/cobrancas, /app/produtos, /app/assinaturas, /app/integracoes, /app/taxas e a rota pública
    /pagar/:slug (checkout). Remova o `currentView` do App.tsx. O botão voltar do navegador e links
    diretos devem funcionar. Separe "Integrações & API" e "Configurações de Taxas" em duas telas.
@@ -245,8 +272,10 @@ FASE 4 — Checkout público.
 8. Exportação CSV real das cobranças filtradas (separador ;, UTF-8 com BOM, valores em reais).
 9. Comprovante: gere PDF ou use window.print com folha de estilo de impressão, com dados reais da
    cobrança paga.
-10. Upload real da imagem de capa do produto (aceite jpg/png/webp até 2 MB, valide tipo no
-    servidor, guarde no armazenamento disponível e salve a URL).
+10. Upload real da imagem de capa do produto (aceite jpg/png/webp até 2 MB, valide o tipo pelo
+    conteúdo do arquivo no servidor). NÃO grave em disco: o Cloud Run apaga arquivos locais.
+    Guarde a imagem no PostgreSQL (modelo Upload com campo `Bytes`, tipo e tamanho) e sirva por
+    GET /api/uploads/:id com cache; o produto guarda o id/URL.
 
 Critério de pronto: abrir /pagar/:slug numa janela anônima, pagar via Pix no sandbox e ver a tela
 de sucesso; cartão redireciona para o Asaas.
