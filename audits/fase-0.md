@@ -98,10 +98,84 @@ Salve na branch ai-studio/fase-0-correcoes (NÃO na main).
 ## Atualização do contexto (colar antes do prompt de correção)
 
 ```text
-ATUALIZAÇÃO DO CONTEXTO: substitua o contexto mestre anterior pelo texto abaixo. Mudanças: stack
+ATUALIZAÇÃO DO CONTEXTO: o texto abaixo substitui o contexto mestre anterior. Mudanças: stack
 fixa (React + Vite + Express + Prisma + PostgreSQL), estrutura de pastas alvo, modelo de negócio
 com subcontas Asaas por lojista e comissão do NextPay via split, e nome sempre "NextPay".
-Não altere nada agora; responda apenas "Contexto atualizado" e aguarde.
+Não altere nenhum arquivo agora.
 
-[cole aqui o Contexto mestre atual de prompts/google-ai-studio.md]
+Você está evoluindo o app NextPay: um painel white-label de pagamentos (Pix, cartão,
+boleto, links de pagamento, catálogo de produtos, assinaturas e saques) voltado a pequenos
+prestadores de serviço brasileiros. Toda a interface está em português do Brasil.
+
+ESTADO ATUAL (depois da Fase 0)
+- Front-end em React 19 + Vite 8 + Tailwind CSS 4 + TypeScript; nome NextPay já aplicado; ESLint,
+  Prettier, Vitest e src/lib/format.ts criados; `npm ci` funciona.
+- Ainda TUDO é simulado: dados fictícios em src/data/mockData.ts, sem back-end, banco,
+  autenticação, rotas por URL nem integração real com o Asaas.
+- A auditoria da Fase 0 pediu correções, que virão na próxima mensagem.
+
+OBJETIVO
+Transformar o protótipo em um app funcional, com back-end próprio integrado à API do Asaas
+(gateway de pagamentos brasileiro), mantendo o visual atual.
+
+MODELO DE NEGÓCIO (white-label sobre o Asaas)
+- O NextPay tem UMA conta raiz no Asaas (ASAAS_API_KEY). Cada lojista que se cadastra no NextPay
+  ganha uma SUBCONTA Asaas própria, criada pela API de subcontas (BaaS). O dinheiro das vendas cai
+  na subconta do lojista, nunca na conta raiz.
+- Toda operação de um lojista (cobrança, saque, serviço) é feita com a chave de API da subconta
+  DELE. A chave da conta raiz só cria subcontas e consulta dados da plataforma.
+- O NextPay ganha dinheiro de duas formas: (a) comissão sobre cada venda, enviada para a carteira
+  da conta raiz (NEXTPAY_WALLET_ID) pelo split de pagamento do Asaas; (b) preço próprio dos
+  serviços sob demanda (Fase 7), acima do custo cobrado pelo Asaas.
+- Nome do produto: escreva sempre exatamente "NextPay" em todo texto visível ao usuário. Em nomes
+  de código siga a convenção da linguagem (nextpay, NEXTPAY_...).
+
+STACK DEFINIDA (não negociável — não proponha alternativas)
+- Front-end: React 19 + Vite + Tailwind CSS 4 + TypeScript (SPA).
+  Rotas: React Router v7 em modo biblioteca (BrowserRouter/createBrowserRouter), NÃO o "framework
+  mode" nem o plugin de Vite do React Router. Dados no front: TanStack Query.
+- Back-end: Node 22 + Express + TypeScript, executado com `tsx`. Validação com `zod`.
+- Banco: PostgreSQL gerenciado (Neon ou Supabase, usado apenas como Postgres) acessado
+  exclusivamente pelo Prisma ORM.
+- Testes: Vitest + Testing Library (unitários), supertest (API), Playwright (E2E).
+- PROIBIDO: Next.js, Remix, NestJS, Firebase/Firestore, SDK do Supabase, SQLite, Mongo, ORM que
+  não seja Prisma, e trocar o Vite por outro bundler.
+
+ESTRUTURA DE PASTAS ALVO
+  server.ts                 → inicia o Express (API + Vite middleware em dev, dist/ em produção)
+  server/routes/*           → rotas Express por recurso
+  server/repositories/*     → únicas funções que usam o Prisma
+  server/integrations/*     → clientes de APIs externas (Asaas)
+  server/lib/*              → utilitários do servidor (auth, erros, validação)
+  server/db.ts              → instância única do PrismaClient
+  prisma/schema.prisma, prisma/migrations/*, prisma/seed.ts
+  src/                      → front-end (views, components, api/client.ts, lib/format.ts)
+  shared/                   → tipos e schemas zod usados pelo front e pelo back
+  O tsconfig deve cobrir src/, server/, shared/ e prisma/, para que `npm run typecheck`
+  verifique front e back.
+
+REGRAS OBRIGATÓRIAS (valem para todas as fases)
+1. Preserve o design: mesmas cores, tokens de tema de src/index.css, tipografia, espaçamentos e
+   textos. Só altere a aparência quando a fase pedir.
+2. Siga a STACK DEFINIDA e a ESTRUTURA DE PASTAS acima. TypeScript em modo `strict`, sem `any`
+   implícito. O servidor escuta na porta 3000. Prisma na versão estável mais recente, seguindo a
+   documentação oficial dessa versão; conexão por `process.env.DATABASE_URL`; nada de SQL solto.
+3. Segredos (DATABASE_URL, chaves do Asaas, JWT_SECRET, ENCRYPTION_KEY, token de webhook) só existem
+   no servidor, lidos de `process.env`. Nunca envie segredo ao navegador e nunca escreva tokens no
+   código. As chaves de API das subcontas ficam no banco cifradas (AES-256-GCM com ENCRYPTION_KEY)
+   e nunca aparecem em logs nem em respostas da API.
+4. Toda chamada ao Asaas acontece no servidor. O front só conversa com a nossa API em `/api/*`.
+5. Dinheiro é armazenado e trafega como inteiro em centavos (`amountCents: number`; no Prisma,
+   campo `Int`, nunca `Float` nem `Decimal`). Formatação em R$ acontece só na exibição, por uma
+   função única `formatBRL(cents)` em src/lib/format.ts. Não crie campos "...Formatted" nos dados.
+6. Datas trafegam em ISO 8601 (UTC) e são formatadas na exibição com Intl / pt-BR.
+7. Valide toda entrada no servidor com `zod`. Erros da API respondem
+   `{ "error": { "code": string, "message": string } }` com o status HTTP correto.
+8. Não deixe nenhum botão "fingindo" funcionar. Se uma função ainda não foi implementada nesta
+   fase, o botão fica desabilitado com tooltip "Em breve" — nunca um toast de sucesso falso.
+9. Não apague funcionalidades existentes sem pedir.
+10. Ao terminar cada fase, responda com: (a) lista de arquivos criados/alterados, (b) novas
+    variáveis de ambiente, (c) passo a passo para testar manualmente, (d) o que ficou pendente.
+
+Responda apenas "Contexto atualizado" e aguarde a próxima mensagem.
 ```
