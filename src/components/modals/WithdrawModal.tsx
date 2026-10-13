@@ -33,7 +33,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
       setIsProcessing(false);
       onConfirmWithdraw(num);
       onShowToast(
-        `Saque D+0 de R$ ${num.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} enviado com sucesso para o Itaú!`
+        `Saque D+0 de R$ ${num.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} enviado com sucesso para o Itaú!`,
       );
       onClose();
     }, 1000);
@@ -70,7 +70,9 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
           <div className="flex items-center justify-between text-body-sm">
             <span className="text-on-surface-variant">Banco de Destino:</span>
             <span className="font-semibold text-on-surface flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px] text-primary">account_balance</span>
+              <span className="material-symbols-outlined text-[16px] text-primary">
+                account_balance
+              </span>
               Itaú Unibanco (341)
             </span>
           </div>
@@ -100,7 +102,8 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                 onClick={() => setWithdrawAmount(availableBalance.toFixed(2))}
                 className="text-primary hover:underline font-label-sm text-xs font-semibold"
               >
-                Sacar Tudo (R$ {availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
+                Sacar Tudo (R${' '}
+                {availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
               </button>
             </div>
             <div className="relative flex items-center">
@@ -122,7 +125,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               Saldo restante após o saque: R${' '}
               {Math.max(0, availableBalance - (parseFloat(withdrawAmount) || 0)).toLocaleString(
                 'pt-BR',
-                { minimumFractionDigits: 2 }
+                { minimumFractionDigits: 2 },
               )}
             </span>
           </div>
@@ -143,7 +146,9 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             >
               {isProcessing ? (
                 <>
-                  <span className="material-symbols-outlined text-[18px] animate-spin">refresh</span>
+                  <span className="material-symbols-outlined text-[18px] animate-spin">
+                    refresh
+                  </span>
                   <span>Processando Pix...</span>
                 </>
               ) : (

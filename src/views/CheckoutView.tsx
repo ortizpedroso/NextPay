@@ -40,8 +40,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   const formattedCountdown = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   // Item details fallback to original screen item
-  const itemTitle =
-    selectedItem?.title || 'Identidade Visual Completa + Manual de Marca';
+  const itemTitle = selectedItem?.title || 'Identidade Visual Completa + Manual de Marca';
   const itemDescription =
     (selectedItem as any)?.description ||
     (selectedItem as any)?.subtitle ||
@@ -123,7 +122,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container transition-colors font-label-md text-xs font-semibold shadow-xs border border-surface-container"
         >
           <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-          <span>Voltar ao Painel NexusPay</span>
+          <span>Voltar ao Painel NextPay</span>
         </button>
 
         <span className="font-label-sm text-xs text-outline hidden sm:inline-block">
@@ -146,7 +145,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                 R$ {currentTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </strong>{' '}
               para o <strong>Estúdio Silva</strong> foi processado com sucesso via infraestrutura
-              NexusPay / Asaas.
+              NextPay Gateway Seguro.
             </p>
             <div className="p-4 bg-surface-container-low rounded-xl text-left text-body-sm space-y-2 border border-surface-container/60">
               <div className="flex justify-between">
@@ -203,7 +202,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                         <span className="material-symbols-outlined text-sm text-secondary">
                           verified
                         </span>
-                        Verificado • NexusPay Secure
+                        Verificado • NextPay Secure
                       </span>
                     </div>
                   </div>
@@ -283,7 +282,8 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                         Garantia de Entrega e Qualidade
                       </span>
                       <span className="font-body-sm text-body-sm text-on-surface-variant">
-                        Revisões ilimitadas na etapa de briefing e cronograma com acompanhamento direto.
+                        Revisões ilimitadas na etapa de briefing e cronograma com acompanhamento
+                        direto.
                       </span>
                     </div>
                   </div>
@@ -293,7 +293,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                     </div>
                     <div>
                       <span className="font-title-md text-title-md text-on-surface block font-semibold">
-                        Custódia Segura NexusPay
+                        Custódia Segura NextPay
                       </span>
                       <span className="font-body-sm text-body-sm text-on-surface-variant">
                         Seus dados financeiros não são armazenados nos servidores do prestador.
@@ -435,16 +435,62 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
                     <div className="flex flex-col sm:flex-row items-center gap-6 bg-surface-container-low p-6 rounded-xl border border-surface-container">
                       <div className="w-44 h-44 bg-surface-container-lowest p-3 rounded-xl shadow-sm flex items-center justify-center flex-shrink-0 border border-surface-container">
-                        <svg className="w-full h-full text-on-surface" fill="currentColor" viewBox="0 0 100 100">
-                          <rect fill="currentColor" height="28" rx="2" width="28" x="0" y="0"></rect>
+                        <svg
+                          className="w-full h-full text-on-surface"
+                          fill="currentColor"
+                          viewBox="0 0 100 100"
+                        >
+                          <rect
+                            fill="currentColor"
+                            height="28"
+                            rx="2"
+                            width="28"
+                            x="0"
+                            y="0"
+                          ></rect>
                           <rect fill="#FFFFFF" height="20" rx="1" width="20" x="4" y="4"></rect>
-                          <rect fill="currentColor" height="12" rx="0.5" width="12" x="8" y="8"></rect>
-                          <rect fill="currentColor" height="28" rx="2" width="28" x="72" y="0"></rect>
+                          <rect
+                            fill="currentColor"
+                            height="12"
+                            rx="0.5"
+                            width="12"
+                            x="8"
+                            y="8"
+                          ></rect>
+                          <rect
+                            fill="currentColor"
+                            height="28"
+                            rx="2"
+                            width="28"
+                            x="72"
+                            y="0"
+                          ></rect>
                           <rect fill="#FFFFFF" height="20" rx="1" width="20" x="76" y="4"></rect>
-                          <rect fill="currentColor" height="12" rx="0.5" width="12" x="80" y="8"></rect>
-                          <rect fill="currentColor" height="28" rx="2" width="28" x="0" y="72"></rect>
+                          <rect
+                            fill="currentColor"
+                            height="12"
+                            rx="0.5"
+                            width="12"
+                            x="80"
+                            y="8"
+                          ></rect>
+                          <rect
+                            fill="currentColor"
+                            height="28"
+                            rx="2"
+                            width="28"
+                            x="0"
+                            y="72"
+                          ></rect>
                           <rect fill="#FFFFFF" height="20" rx="1" width="20" x="4" y="76"></rect>
-                          <rect fill="currentColor" height="12" rx="0.5" width="12" x="8" y="80"></rect>
+                          <rect
+                            fill="currentColor"
+                            height="12"
+                            rx="0.5"
+                            width="12"
+                            x="8"
+                            y="80"
+                          ></rect>
                           <rect height="6" width="6" x="34" y="4"></rect>
                           <rect height="6" width="8" x="44" y="4"></rect>
                           <rect height="6" width="8" x="56" y="4"></rect>
@@ -629,21 +675,11 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                         onChange={(e) => setInstallments(e.target.value)}
                         className="w-full h-11 px-3 bg-surface-container-low rounded-lg font-body-md text-body-md text-on-surface focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary border border-surface-container"
                       >
-                        <option value="1">
-                          1x de R$ {basePrice.toFixed(2)} (Sem juros)
-                        </option>
-                        <option value="2">
-                          2x de R$ {(basePrice / 2).toFixed(2)} (Sem juros)
-                        </option>
-                        <option value="3">
-                          3x de R$ {(basePrice / 3).toFixed(2)} (Sem juros)
-                        </option>
-                        <option value="6">
-                          6x de R$ {(basePrice / 6).toFixed(2)} (Sem juros)
-                        </option>
-                        <option value="12">
-                          12x de R$ {(basePrice / 10.1).toFixed(2)}
-                        </option>
+                        <option value="1">1x de R$ {basePrice.toFixed(2)} (Sem juros)</option>
+                        <option value="2">2x de R$ {(basePrice / 2).toFixed(2)} (Sem juros)</option>
+                        <option value="3">3x de R$ {(basePrice / 3).toFixed(2)} (Sem juros)</option>
+                        <option value="6">6x de R$ {(basePrice / 6).toFixed(2)} (Sem juros)</option>
+                        <option value="12">12x de R$ {(basePrice / 10.1).toFixed(2)}</option>
                       </select>
                     </div>
 
@@ -663,7 +699,9 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                         <>
                           <span className="material-symbols-outlined text-lg">lock</span>
                           <span>
-                            Pagar R$ {basePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} com Cartão
+                            Pagar R${' '}
+                            {basePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} com
+                            Cartão
                           </span>
                         </>
                       )}
@@ -783,7 +821,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
                   <div className="text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1">
                     <span>Processado com tecnologia</span>
-                    <strong className="text-on-surface">Asaas Gateway</strong>
+                    <strong className="text-on-surface">NextPay Secure Gateway</strong>
                   </div>
                 </div>
               </div>

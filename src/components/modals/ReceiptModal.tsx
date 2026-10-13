@@ -16,7 +16,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   clientName = 'Estúdio Criativo Silva',
   amount = 'R$ 4.250,00',
   method = 'Transferência Pix Automática D+0',
-  code = '#ASAAS-LIQ-9842109',
+  code = '#NEXTPAY-LIQ-9842109',
   onShowToast,
 }) => {
   if (!isOpen) return null;
@@ -52,7 +52,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
         <div className="bg-surface-container-low p-space-md rounded-xl space-y-2.5 text-body-sm border border-surface-container/70">
           <div className="flex justify-between">
-            <span className="text-on-surface-variant">Protocolo Asaas:</span>
+            <span className="text-on-surface-variant">Protocolo NextPay:</span>
             <span className="font-mono text-on-surface font-semibold">{code}</span>
           </div>
           <div className="flex justify-between">

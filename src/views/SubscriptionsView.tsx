@@ -95,7 +95,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
           <div>
             <div className="flex items-center gap-space-xs">
               <span className="font-label-sm text-label-sm text-tertiary uppercase tracking-widest font-semibold">
-                NexusPay Recorrência
+                NextPay Recorrência
               </span>
               <span className="text-outline">•</span>
               <span className="font-label-sm text-label-sm text-on-surface-variant">
@@ -132,7 +132,8 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
               R$ 42.620,00
             </div>
             <span className="font-body-sm text-secondary flex items-center gap-1 mt-0.5 font-medium">
-              <span className="material-symbols-outlined text-[14px]">trending_up</span> +8.5% este mês
+              <span className="material-symbols-outlined text-[14px]">trending_up</span> +8.5% este
+              mês
             </span>
           </div>
 
@@ -203,7 +204,9 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     </div>
                     <div className="flex justify-between text-body-sm">
                       <span className="text-on-surface-variant">Assinantes:</span>
-                      <span className="font-bold text-secondary">{plan.activeSubscribers} ativos</span>
+                      <span className="font-bold text-secondary">
+                        {plan.activeSubscribers} ativos
+                      </span>
                     </div>
                     <div className="flex justify-between text-body-sm">
                       <span className="text-on-surface-variant">MRR Total:</span>

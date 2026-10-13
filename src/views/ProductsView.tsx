@@ -36,7 +36,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   });
 
   const handleCopyLink = (product: ProductItem) => {
-    const url = `https://nexuspay.link/silva-design/${product.id}`;
+    const url = `https://nextpay.link/silva-design/${product.id}`;
     navigator.clipboard.writeText(url);
     onShowToast(`Link de pagamento para "${product.title}" copiado com sucesso!`);
   };
@@ -55,7 +55,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                 {products.length} ativos
               </span>
               <span className="font-body-sm text-body-sm text-secondary flex items-center gap-space-xs mt-0.5 font-medium">
-                <span className="material-symbols-outlined text-[14px]">trending_up</span> +3 novos este mês
+                <span className="material-symbols-outlined text-[14px]">trending_up</span> +3 novos
+                este mês
               </span>
             </div>
             <div className="h-10 w-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
@@ -72,7 +73,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                 R$ 14.820,00
               </span>
               <span className="font-body-sm text-body-sm text-secondary flex items-center gap-space-xs mt-0.5 font-medium">
-                <span className="material-symbols-outlined text-[14px]">sync</span> 39 assinaturas ativas
+                <span className="material-symbols-outlined text-[14px]">sync</span> 39 assinaturas
+                ativas
               </span>
             </div>
             <div className="h-10 w-10 rounded-lg bg-surface-container flex items-center justify-center text-secondary">
@@ -89,7 +91,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                 42,8%
               </span>
               <span className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-space-xs mt-0.5 font-medium">
-                <span className="material-symbols-outlined text-[14px]">bolt</span> Liquidação D+0 Pix
+                <span className="material-symbols-outlined text-[14px]">bolt</span> Liquidação D+0
+                Pix
               </span>
             </div>
             <div className="h-10 w-10 rounded-lg bg-surface-container flex items-center justify-center text-tertiary">
@@ -106,7 +109,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                 Status Seguro
               </span>
               <span className="font-body-sm text-body-sm text-outline flex items-center gap-space-xs mt-0.5">
-                <span className="material-symbols-outlined text-[14px]">lock</span> TLS 1.3 / Asaas Auth
+                <span className="material-symbols-outlined text-[14px]">lock</span> TLS 1.3 /
+                NextPay Shield
               </span>
             </div>
             <div className="h-10 w-10 rounded-lg bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed">
@@ -120,7 +124,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
           <div>
             <div className="flex items-center gap-space-xs">
               <span className="font-label-sm text-label-sm text-primary uppercase tracking-widest font-semibold">
-                NexusPay Hub
+                NextPay Hub
               </span>
               <span className="text-outline">•</span>
               <span className="font-label-sm text-label-sm text-on-surface-variant">
@@ -300,7 +304,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                         type="button"
                         onClick={() =>
                           onShowToast(
-                            `Métricas de Vendas: ${product.salesCount} unidades vendidas para "${product.title}"`
+                            `Métricas de Vendas: ${product.salesCount} unidades vendidas para "${product.title}"`,
                           )
                         }
                         className="h-9 w-9 flex items-center justify-center rounded-lg bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors"
@@ -336,7 +340,9 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                       <span className="px-2 py-0.5 rounded text-xs bg-surface-container text-primary font-semibold">
                         {product.categoryLabel}
                       </span>
-                      <h3 className="font-title-md font-semibold text-on-surface">{product.title}</h3>
+                      <h3 className="font-title-md font-semibold text-on-surface">
+                        {product.title}
+                      </h3>
                     </div>
                     <p className="font-body-sm text-on-surface-variant line-clamp-1 max-w-lg mt-0.5">
                       {product.description}
