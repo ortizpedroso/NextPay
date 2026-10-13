@@ -4,15 +4,15 @@ Commit auditado: `655309b` (`main`) · Resultado: **reprovada, com correções**
 
 ## O que eu rodei
 
-| Verificação | Resultado |
-|---|---|
-| `npm ci` (sem `--legacy-peer-deps`) | ✅ |
-| `npm run typecheck` | ✅ |
-| `npm run lint` | ✅ (mas com regras importantes desligadas, ver item 4) |
-| `npm test` | ✅ 10 testes |
-| `npm run build` | ✅ (aviso de bundle > 500 kB) |
-| Nome "NexusPay" removido de `src/`, `index.html`, `metadata.json` | ✅ |
-| `esbuild` e `@google/genai` removidos, `import.meta.dirname` no Vite | ✅ |
+| Verificação                                                          | Resultado                                              |
+| -------------------------------------------------------------------- | ------------------------------------------------------ |
+| `npm ci` (sem `--legacy-peer-deps`)                                  | ✅                                                     |
+| `npm run typecheck`                                                  | ✅                                                     |
+| `npm run lint`                                                       | ✅ (mas com regras importantes desligadas, ver item 4) |
+| `npm test`                                                           | ✅ 10 testes                                           |
+| `npm run build`                                                      | ✅ (aviso de bundle > 500 kB)                          |
+| Nome "NexusPay" removido de `src/`, `index.html`, `metadata.json`    | ✅                                                     |
+| `esbuild` e `@google/genai` removidos, `import.meta.dirname` no Vite | ✅                                                     |
 
 ## Problemas encontrados
 
@@ -189,18 +189,19 @@ Responda apenas "Contexto atualizado" e aguarde a próxima mensagem.
 
 Commit auditado: `61a8eda` (`ai-studio/fase-0-correcoes`) · Resultado: **aprovada**
 
-| Verificação | Resultado |
-|---|---|
-| `npm ci`, typecheck (`strict: true`), lint (sem `any`, sem variáveis não usadas) | ✅ |
-| `npx prettier --check .` | ✅ |
-| `npm test` | ✅ 14 testes |
-| `npm run build` | ✅ (bundle caiu de 506 kB para 454 kB) |
-| CI no GitHub (run 38451282795) | ✅ success |
-| `parseBRLToCents` rejeita todos os casos inválidos da auditoria e aceita os válidos | ✅ |
-| Telas falsas removidas, itens extras do menu desabilitados com "Em breve", sem "Flapp" | ✅ |
-| `bun.lock` removido, `.env.example` com os nomes combinados | ✅ |
+| Verificação                                                                            | Resultado                              |
+| -------------------------------------------------------------------------------------- | -------------------------------------- |
+| `npm ci`, typecheck (`strict: true`), lint (sem `any`, sem variáveis não usadas)       | ✅                                     |
+| `npx prettier --check .`                                                               | ✅                                     |
+| `npm test`                                                                             | ✅ 14 testes                           |
+| `npm run build`                                                                        | ✅ (bundle caiu de 506 kB para 454 kB) |
+| CI no GitHub (run 38451282795)                                                         | ✅ success                             |
+| `parseBRLToCents` rejeita todos os casos inválidos da auditoria e aceita os válidos    | ✅                                     |
+| Telas falsas removidas, itens extras do menu desabilitados com "Em breve", sem "Flapp" | ✅                                     |
+| `bun.lock` removido, `.env.example` com os nomes combinados                            | ✅                                     |
 
 Pendências pequenas que serão resolvidas nas próximas fases (não bloqueiam):
+
 - Teste de latência ainda usa número aleatório e tokens de exemplo continuam escritos no componente
   (Fases 3 e 5 substituem).
 - `Header` recebe a prop `onOpenSimulator` sem uso real (limpar quando o simulador for decidido).
