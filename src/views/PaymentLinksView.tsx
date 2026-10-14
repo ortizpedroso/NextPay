@@ -1,52 +1,86 @@
 import React, { useState } from 'react';
-import { PaymentLink, Transaction } from '../data/mockData';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api, PaymentLinkData } from '../api/client';
 
 interface PaymentLinksViewProps {
-  paymentLinks: PaymentLink[];
-  transactions: Transaction[];
-  onAddPaymentLink: (newLink: PaymentLink) => void;
   onOpenQrPix: (title: string, price: string) => void;
-  onOpenReceipt: (tx?: Transaction) => void;
-  onOpenCheckoutWithLink: (link: PaymentLink) => void;
+  onOpenCheckoutWithLink: (link: PaymentLinkData) => void;
   onShowToast: (msg: string) => void;
 }
 
 export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
-  paymentLinks,
-  _transactions,
-  onAddPaymentLink,
   onOpenQrPix,
-  _onOpenReceipt,
   onOpenCheckoutWithLink,
   onShowToast,
-}: PaymentLinksViewProps & {
-  _transactions?: PaymentLinksViewProps['transactions'];
-  _onOpenReceipt?: PaymentLinksViewProps['onOpenReceipt'];
 }) => {
+  const queryClient = useQueryClient();
+
   // Generator state
   const [billingType, setBillingType] = useState<'avulsa' | 'recorrente'>('avulsa');
   const [title, setTitle] = useState('Consultoria de Design UX/UI - Pacote Mensal');
   const [amount, setAmount] = useState('1500,00');
-  const [dueDate, setDueDate] = useState('2025-04-10');
   const [enablePix, setEnablePix] = useState(true);
   const [enableCard, setEnableCard] = useState(true);
   const [enableBoleto, setEnableBoleto] = useState(true);
-  const [maxInstallments, setMaxInstallments] = useState('12x');
-  const [feeBearer, setFeeBearer] = useState<'client' | 'seller'>('client');
+  const [maxInstallments, setMaxInstallments] = useState('12');
   const [enableWhatsapp, setEnableWhatsapp] = useState(true);
   const [enableEmail, setEnableEmail] = useState(true);
 
   // Link filter state
   const [linkFilter, setLinkFilter] = useState<'all' | 'recorrente' | 'avulsa'>('all');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
 
   // Calculate net pix estimate using new NextPay rate (R$ 2,48 fixo por cobrança)
   const numericAmount = parseFloat(amount.replace(/\./g, '').replace(',', '.')) || 0;
   const pixFeeCharged = 2.48;
   const netPix = Math.max(0, numericAmount - pixFeeCharged);
 
-  const filteredLinks = paymentLinks.filter((link) => {
-    if (linkFilter === 'all') return true;
-    return link.type === linkFilter;
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['payment-links', { page, pageSize, q: search, type: linkFilter }],
+    queryFn: () =>
+      api.getPaymentLinks({
+        page,
+        pageSize,
+        q: search,
+        type: linkFilter !== 'all' ? linkFilter : undefined,
+      }),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (newLink: Partial<PaymentLinkData>) => api.createPaymentLink(newLink),
+    onSuccess: (link) => {
+      queryClient.invalidateQueries({ queryKey: ['payment-links'] });
+      onShowToast(`Link "${link.title}" criado e ativo para cobrança!`);
+      setTitle('');
+      setAmount('0,00');
+    },
+    onError: (err: Error) => {
+      onShowToast(`Erro ao criar link: ${err.message}`);
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: (id: string) => api.togglePaymentLink(id),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['payment-links'] });
+      onShowToast(`Link "${updated.title}" ${updated.active ? 'ativado' : 'pausado'} com sucesso!`);
+    },
+    onError: (err: Error) => {
+      onShowToast(`Erro ao alterar status: ${err.message}`);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deletePaymentLink(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payment-links'] });
+      onShowToast('Link de pagamento excluído com sucesso!');
+    },
+    onError: (err: Error) => {
+      onShowToast(`Erro ao excluir link: ${err.message}`);
+    },
   });
 
   const handleCreateLink = (e: React.FormEvent) => {
@@ -56,40 +90,29 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
       return;
     }
 
-    const cleanSlug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-');
-    const newLink: PaymentLink = {
-      id: `link-${Date.now()}`,
+    createMutation.mutate({
       title: title.trim(),
-      subtitle: `${billingType === 'recorrente' ? 'Assinatura recorrente' : 'Pagamento único'} via Pix e Cartão`,
-      type: billingType,
-      typeLabel: billingType === 'recorrente' ? 'Recorrente Mensal' : 'Cobrança Avulsa',
-      status: 'Ativo',
-      unitPrice: numericAmount,
-      unitPriceFormatted: `R$ ${amount}${billingType === 'recorrente' ? '/mês' : ''}`,
-      totalBilledFormatted: 'R$ 0,00',
-      sales: 0,
-      views: 1,
-      conversionRate: '0.0%',
-      url: `https://nextpay.link/silva-design/${cleanSlug}`,
-    };
-
-    onAddPaymentLink(newLink);
+      description: `${billingType === 'recorrente' ? 'Assinatura recorrente' : 'Pagamento único'} via Pix e Cartão`,
+      amountCents: Math.round(numericAmount * 100),
+      billingType,
+      active: true,
+      maxInstallments: parseInt(maxInstallments, 10) || 12,
+      enablePix,
+      enableCard,
+      enableBoleto,
+    });
   };
 
   const handleCopyLink = (url: string) => {
-    navigator.clipboard.writeText(url);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url);
+    }
     onShowToast('Link de pagamento copiado para a área de transferência!');
   };
 
-  const handleShareWhatsapp = (link: PaymentLink) => {
-    const text = encodeURIComponent(
-      `Olá! Segue o link seguro NextPay para acerto de "${link.title}" no valor de ${link.unitPriceFormatted}: ${link.url}`,
-    );
-    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
-  };
+  const paymentLinks = data?.items || [];
+  const total = data?.total || 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="flex flex-col w-full">
@@ -99,208 +122,93 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
           <div className="space-y-space-xs">
             <div className="flex items-center gap-space-sm flex-wrap">
               <span className="font-label-sm text-label-sm text-primary uppercase tracking-widest bg-surface-container-high px-space-sm py-0.5 rounded-full font-semibold">
-                NextPay Checkout v2.4
+                NextPay Checkout
               </span>
               <span className="text-on-surface-variant font-label-sm text-label-sm">•</span>
               <span className="font-label-sm text-label-sm text-secondary font-semibold flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span>
-                Liquidação Instantânea D+0
+                Persistência em PostgreSQL
               </span>
             </div>
             <h1 className="font-display-lg text-display-lg text-on-surface font-bold tracking-tight">
               Links de Pagamento & Cobranças
             </h1>
             <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
-              Emita links instantâneos para WhatsApp, redes ou propostas comerciais. Automatize
-              réguas com lembretes inteligentes sem taxa de emissão.
+              Emita links instantâneos para WhatsApp, redes ou propostas comerciais. Gerencie status
+              e receba via Pix, Cartão ou Boleto.
             </p>
-          </div>
-
-          <div className="flex items-center gap-space-sm shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                const el = document.getElementById('quick-generator-panel');
-                el?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="flex items-center gap-space-xs bg-primary text-on-primary hover:bg-primary-container px-space-lg py-space-md rounded-xl font-title-md text-title-md shadow-md hover:shadow-lg transition-all duration-200"
-            >
-              <span className="material-symbols-outlined text-[22px]">add_circle</span>
-              <span>+ Criar Novo Link de Pagamento</span>
-            </button>
           </div>
         </header>
 
-        {/* Top Statistical Strip */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-space-md">
-          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between border border-surface-container/60 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between text-on-surface-variant">
-              <span className="font-label-sm text-label-sm uppercase font-semibold">
-                Volume Faturado (Mês)
-              </span>
-              <span className="material-symbols-outlined text-[20px] text-primary">payments</span>
-            </div>
-            <div className="mt-space-sm">
-              <div className="font-numeric-lg text-numeric-lg text-on-surface font-bold">
-                R$ 38.450,00
-              </div>
-              <div className="flex items-center gap-1 mt-1 text-secondary font-label-md text-label-md font-semibold">
-                <span className="material-symbols-outlined text-[16px]">trending_up</span>
-                <span>+22.4% vs mês anterior</span>
-              </div>
-            </div>
+        {/* SECTION: Gerador de Links de Cobrança */}
+        <section className="bg-surface-container-lowest p-space-lg lg:p-space-xl rounded-3xl shadow-sm border border-surface-container/60 space-y-space-lg">
+          <div className="border-b border-surface-container pb-space-md">
+            <h2 className="font-headline-md text-headline-md font-bold text-on-surface flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[28px]">add_link</span>
+              <span>Criar Novo Link de Pagamento</span>
+            </h2>
+            <p className="font-body-sm text-body-sm text-on-surface-variant">
+              Preencha os dados e gere um link de checkout pronto para compartilhar com seu cliente.
+            </p>
           </div>
 
-          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between border border-surface-container/60 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between text-on-surface-variant">
-              <span className="font-label-sm text-label-sm uppercase font-semibold">
-                Conversão Média de Links
-              </span>
-              <span className="material-symbols-outlined text-[20px] text-primary">
-                donut_large
-              </span>
-            </div>
-            <div className="mt-space-sm flex items-baseline justify-between">
-              <div>
-                <div className="font-numeric-lg text-numeric-lg text-on-surface font-bold">
-                  78.6%
+          <form onSubmit={handleCreateLink} className="space-y-space-lg">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
+              {/* Left Column (7 cols): Dados da Cobrança */}
+              <div className="lg:col-span-7 space-y-space-md">
+                {/* Tipo de Cobrança */}
+                <div className="space-y-1.5">
+                  <label className="font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant">
+                    Tipo de Cobrança
+                  </label>
+                  <div className="grid grid-cols-2 gap-space-xs p-1 bg-surface-container-low rounded-xl border border-surface-container">
+                    <button
+                      type="button"
+                      onClick={() => setBillingType('avulsa')}
+                      className={`py-2 text-center rounded-lg font-title-md text-body-md font-medium transition-all ${
+                        billingType === 'avulsa'
+                          ? 'bg-surface-container-lowest text-primary shadow-xs font-semibold'
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      Cobrança Avulsa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBillingType('recorrente')}
+                      className={`py-2 text-center rounded-lg font-title-md text-body-md font-medium transition-all ${
+                        billingType === 'recorrente'
+                          ? 'bg-surface-container-lowest text-primary shadow-xs font-semibold'
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      Assinatura Recorrente
+                    </button>
+                  </div>
                 </div>
-                <span className="font-body-sm text-body-sm text-on-surface-variant">
-                  48 vendas de 61 aberturas
-                </span>
-              </div>
-              <svg
-                className="w-16 h-8 text-secondary overflow-visible"
-                fill="none"
-                viewBox="0 0 64 32"
-              >
-                <path
-                  d="M2 28L18 20L34 22L48 10L62 4"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2.5"
-                ></path>
-              </svg>
-            </div>
-          </div>
 
-          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between border border-surface-container/60 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between text-on-surface-variant">
-              <span className="font-label-sm text-label-sm uppercase font-semibold">
-                Cobranças Pendentes
-              </span>
-              <span className="material-symbols-outlined text-[20px] text-outline">
-                pending_actions
-              </span>
-            </div>
-            <div className="mt-space-sm">
-              <div className="font-numeric-lg text-numeric-lg text-on-surface font-bold">
-                R$ 4.280,00
-              </div>
-              <span className="font-body-sm text-body-sm text-on-surface-variant">
-                3 cobranças vencendo hoje
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between border border-surface-container/60 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between text-on-surface-variant">
-              <span className="font-label-sm text-label-sm uppercase font-semibold">
-                Taxa Efetiva Média
-              </span>
-              <span className="material-symbols-outlined text-[20px] text-tertiary">tune</span>
-            </div>
-            <div className="mt-space-sm">
-              <div className="font-numeric-lg text-numeric-lg text-on-surface font-bold">1,89%</div>
-              <span className="font-body-sm text-body-sm text-on-surface-variant">
-                Com spread NextPay de 1% + R$ 0,49
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* SECTION: Gerador Rápido de Cobrança / Link de Pagamento */}
-        <section
-          className="bg-surface-container-lowest rounded-2xl shadow-md p-space-lg lg:p-space-xl relative overflow-hidden border border-surface-container/60"
-          id="quick-generator-panel"
-        >
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm pb-space-lg mb-space-lg border-b border-surface-container-highest/60">
-            <div className="flex items-center gap-space-sm">
-              <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center text-primary">
-                <span className="material-symbols-outlined text-[24px]">link</span>
-              </div>
-              <div>
-                <h2 className="font-headline-md text-headline-md font-bold text-on-surface">
-                  Gerador Rápido de Cobrança & Link
-                </h2>
-                <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Configure métodos de liquidação e automações de régua em 30 segundos.
-                </p>
-              </div>
-            </div>
-
-            <div className="inline-flex p-1 bg-surface-container-low rounded-xl border border-surface-container">
-              <button
-                type="button"
-                onClick={() => setBillingType('avulsa')}
-                className={`px-space-md py-space-xs font-title-md text-body-md rounded-lg font-semibold transition-all ${
-                  billingType === 'avulsa'
-                    ? 'bg-surface-container-lowest text-primary shadow-sm'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
-                Cobrança Avulsa
-              </button>
-              <button
-                type="button"
-                onClick={() => setBillingType('recorrente')}
-                className={`px-space-md py-space-xs font-title-md text-body-md rounded-lg font-semibold transition-all ${
-                  billingType === 'recorrente'
-                    ? 'bg-surface-container-lowest text-primary shadow-sm'
-                    : 'text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
-                Assinatura Recorrente
-              </button>
-            </div>
-          </div>
-
-          <form
-            onSubmit={handleCreateLink}
-            className="grid grid-cols-1 lg:grid-cols-12 gap-space-xl"
-          >
-            {/* Left Column: Core Data */}
-            <div className="lg:col-span-7 space-y-space-lg">
-              <div className="space-y-space-xs">
-                <label className="font-label-md text-label-md font-semibold text-on-surface flex items-center justify-between">
-                  <span>Nome do Serviço ou Produto</span>
-                  <span className="text-on-surface-variant font-body-sm text-body-sm">
-                    Exibido na tela de checkout
-                  </span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-on-surface-variant material-symbols-outlined text-[20px]">
-                    edit_note
-                  </span>
+                {/* Título */}
+                <div className="space-y-1.5">
+                  <label className="font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant">
+                    Nome do Produto ou Serviço *
+                  </label>
                   <input
                     type="text"
                     required
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Ex: Projeto Identidade Visual, Mentoria..."
-                    className="w-full bg-surface-container-low focus:bg-surface-container-lowest text-on-surface font-body-md text-body-md pl-10 pr-space-md py-space-sm rounded-xl border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary transition-all placeholder:text-outline"
+                    placeholder="Ex: Consultoria em Branding & Identidade Visual"
+                    className="w-full px-space-md py-3 rounded-xl bg-surface-container-low border border-surface-container text-body-md text-on-surface outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary transition-all placeholder:text-outline"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-                <div className="space-y-space-xs">
-                  <label className="font-label-md text-label-md font-semibold text-on-surface">
-                    Valor a Cobrar
+                {/* Valor */}
+                <div className="space-y-1.5">
+                  <label className="font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant">
+                    Valor a Cobrar (R$) *
                   </label>
-                  <div className="relative flex items-center">
-                    <span className="absolute left-3 font-title-md text-body-md font-bold text-on-surface-variant">
+                  <div className="relative">
+                    <span className="absolute left-4 top-3.5 font-numeric-md font-bold text-on-surface-variant text-body-md">
                       R$
                     </span>
                     <input
@@ -309,310 +217,137 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder="0,00"
-                      className="w-full bg-surface-container-low focus:bg-surface-container-lowest text-on-surface font-numeric-md text-headline-sm font-bold pl-12 pr-space-md py-space-sm rounded-xl border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary transition-all text-right"
+                      className="w-full pl-12 pr-space-md py-3 rounded-xl bg-surface-container-low border border-surface-container text-title-md font-numeric-lg font-bold text-on-surface outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary transition-all"
                     />
                   </div>
-                  <div className="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant pt-1">
-                    <span>Recebimento líquido estimado:</span>
-                    <span className="text-secondary font-semibold font-numeric-md text-body-sm">
-                      R$ {netPix.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (Pix D+0)
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-space-xs">
-                  <label className="font-label-md text-label-md font-semibold text-on-surface">
-                    Vencimento / Expiração do Link
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-on-surface-variant material-symbols-outlined text-[20px]">
-                      event
-                    </span>
-                    <input
-                      type="date"
-                      value={dueDate}
-                      onChange={(e) => setDueDate(e.target.value)}
-                      className="w-full bg-surface-container-low focus:bg-surface-container-lowest text-on-surface font-body-md text-body-md pl-10 pr-space-md py-space-sm rounded-xl border border-surface-container focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-                    />
-                  </div>
-                  <p className="font-label-sm text-label-sm text-on-surface-variant pt-1">
-                    Após esta data o QR Code e link são invalidados
-                  </p>
-                </div>
-              </div>
-
-              {/* Payment Methods Config Box */}
-              <div className="bg-surface-container-low/70 p-space-md rounded-2xl space-y-space-md border border-surface-container">
-                <div className="flex items-center justify-between">
-                  <span className="font-title-md text-title-md font-bold text-on-surface">
-                    Formas de Recebimento Habilitadas
-                  </span>
-                  <span className="font-label-sm text-label-sm text-secondary font-semibold bg-secondary-container/20 px-2 py-0.5 rounded-full">
-                    Taxas Oficiais NextPay
+                  <span className="text-xs text-on-surface-variant">
+                    Estimativa líquida no Pix NextPay: R${' '}
+                    {netPix.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
 
-                {/* Pix Dinâmico Toggle */}
-                <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex items-center justify-between gap-space-md border border-surface-container/60">
-                  <div className="flex items-center gap-space-sm">
-                    <div className="w-9 h-9 rounded-lg bg-secondary-fixed/30 text-secondary flex items-center justify-center">
-                      <span className="material-symbols-outlined text-[22px]">qr_code_2</span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-title-md text-body-md font-bold text-on-surface">
-                          Pix Dinâmico Instantâneo
-                        </span>
-                        <span className="bg-secondary-fixed text-on-secondary-fixed text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">
-                          R$ 2,48
-                        </span>
-                      </div>
-                      <p className="font-body-sm text-body-sm text-on-surface-variant">
-                        Compensação na hora com baixa automática NextPay D+0.
-                      </p>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={enablePix}
-                      onChange={(e) => setEnablePix(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-secondary"></div>
+                {/* Formas de Pagamento Aceitas */}
+                <div className="space-y-2 pt-2">
+                  <label className="font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant">
+                    Meios de Pagamento Disponíveis no Checkout
                   </label>
-                </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <label
+                      className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
+                        enablePix
+                          ? 'bg-secondary/10 border-secondary text-on-surface'
+                          : 'bg-surface-container-low border-surface-container text-outline'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={enablePix}
+                        onChange={(e) => setEnablePix(e.target.checked)}
+                        className="rounded text-secondary"
+                      />
+                      <span className="text-xs font-semibold">Pix Instantâneo</span>
+                    </label>
 
-                {/* Cartão de Crédito Toggle & Parcelamento */}
-                <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm space-y-space-md border border-surface-container/60">
-                  <div className="flex items-center justify-between gap-space-md">
-                    <div className="flex items-center gap-space-sm">
-                      <div className="w-9 h-9 rounded-lg bg-primary-fixed text-primary flex items-center justify-center">
-                        <span className="material-symbols-outlined text-[22px]">credit_card</span>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-title-md text-body-md font-bold text-on-surface">
-                            Cartão de Crédito
-                          </span>
-                          <span className="font-label-sm text-label-sm text-on-surface-variant">
-                            Taxa 3.99% + R$ 0,98 à vista
-                          </span>
-                        </div>
-                        <p className="font-body-sm text-body-sm text-on-surface-variant">
-                          Aceita Visa, Mastercard, Elo e Amex com antifraude 3DS 2.0 ativo.
-                        </p>
-                      </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <label
+                      className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
+                        enableCard
+                          ? 'bg-primary/10 border-primary text-on-surface'
+                          : 'bg-surface-container-low border-surface-container text-outline'
+                      }`}
+                    >
                       <input
                         type="checkbox"
                         checked={enableCard}
                         onChange={(e) => setEnableCard(e.target.checked)}
-                        className="sr-only peer"
+                        className="rounded text-primary"
                       />
-                      <div className="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      <span className="text-xs font-semibold">Cartão de Crédito</span>
                     </label>
-                  </div>
 
-                  {enableCard && (
-                    <div className="pt-space-sm border-t border-surface-container space-y-space-sm">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-                        <div>
-                          <label className="font-label-sm text-label-sm text-on-surface-variant block mb-1">
-                            Máximo de Parcelas Permitidas
-                          </label>
-                          <select
-                            value={maxInstallments}
-                            onChange={(e) => setMaxInstallments(e.target.value)}
-                            className="w-full bg-surface-container-low text-on-surface font-body-md text-body-md py-1.5 px-space-sm rounded-lg border border-surface-container focus:outline-none focus:ring-1 focus:ring-primary"
-                          >
-                            <option value="1x">Até 1x (À vista)</option>
-                            <option value="6x">Até 6x (4,49% + R$ 0,98)</option>
-                            <option value="12x">Até 12x (4,99% + R$ 0,98)</option>
-                            <option value="21x">Até 21x (5,29% + R$ 0,98)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="font-label-sm text-label-sm text-on-surface-variant block mb-1">
-                            Repasse de Juros do Parcelamento
-                          </label>
-                          <div className="flex items-center gap-space-sm pt-1">
-                            <label className="flex items-center gap-1.5 text-body-sm font-medium cursor-pointer">
-                              <input
-                                type="radio"
-                                name="fee_bearer"
-                                checked={feeBearer === 'client'}
-                                onChange={() => setFeeBearer('client')}
-                                className="text-primary focus:ring-primary"
-                              />
-                              <span>Cliente assume juros</span>
-                            </label>
-                            <label className="flex items-center gap-1.5 text-body-sm font-medium cursor-pointer">
-                              <input
-                                type="radio"
-                                name="fee_bearer"
-                                checked={feeBearer === 'seller'}
-                                onChange={() => setFeeBearer('seller')}
-                                className="text-primary focus:ring-primary"
-                              />
-                              <span>Assumir juros (Sem acréscimo)</span>
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Boleto Bancário Registrado */}
-                <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm space-y-space-md border border-surface-container/60">
-                  <div className="flex items-center justify-between gap-space-md">
-                    <div className="flex items-center gap-space-sm">
-                      <div className="w-9 h-9 rounded-lg bg-tertiary-fixed text-tertiary flex items-center justify-center">
-                        <span className="material-symbols-outlined text-[22px]">receipt</span>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-title-md text-body-md font-bold text-on-surface">
-                            Boleto Bancário Registrado
-                          </span>
-                          <span className="font-label-sm text-label-sm text-on-surface-variant">
-                            1% + R$ 2,48 por liquidação
-                          </span>
-                        </div>
-                        <p className="font-body-sm text-body-sm text-on-surface-variant">
-                          Compensação em D+1 com código de barras e linha digitável CIP.
-                        </p>
-                      </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <label
+                      className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${
+                        enableBoleto
+                          ? 'bg-tertiary/10 border-tertiary text-on-surface'
+                          : 'bg-surface-container-low border-surface-container text-outline'
+                      }`}
+                    >
                       <input
                         type="checkbox"
                         checked={enableBoleto}
                         onChange={(e) => setEnableBoleto(e.target.checked)}
-                        className="sr-only peer"
+                        className="rounded text-tertiary"
                       />
-                      <div className="w-11 h-6 bg-surface-container-highest rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-tertiary"></div>
+                      <span className="text-xs font-semibold">Boleto Bancário</span>
                     </label>
                   </div>
                 </div>
+
+                {/* Parcelamento */}
+                {enableCard && (
+                  <div className="space-y-1.5">
+                    <label className="font-label-sm text-label-sm uppercase font-semibold text-on-surface-variant">
+                      Parcelamento Máximo no Cartão
+                    </label>
+                    <select
+                      value={maxInstallments}
+                      onChange={(e) => setMaxInstallments(e.target.value)}
+                      className="w-full px-3 py-2 bg-surface-container-low border border-surface-container rounded-xl text-body-sm text-on-surface outline-none"
+                    >
+                      <option value="1">1x (Apenas à vista)</option>
+                      <option value="3">Até 3x</option>
+                      <option value="6">Até 6x</option>
+                      <option value="12">Até 12x</option>
+                      <option value="21">Até 21x</option>
+                    </select>
+                  </div>
+                )}
               </div>
-            </div>
 
-            {/* Right Column: Automação & Régua */}
-            <div className="lg:col-span-5 flex flex-col justify-between space-y-space-lg">
-              <div className="bg-surface-container-low/70 p-space-md rounded-2xl space-y-space-md border border-surface-container">
-                <div className="flex items-center gap-space-xs text-primary">
-                  <span className="material-symbols-outlined text-[20px]">
-                    notifications_active
-                  </span>
-                  <span className="font-title-md text-title-md font-bold text-on-surface">
-                    Régua Automática de Cobrança
-                  </span>
-                </div>
-                <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  Disparos inteligentes sem precisar mandar mensagem manual.
-                </p>
-
-                <div className="space-y-space-sm">
-                  {/* WhatsApp Notification */}
-                  <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm space-y-2 border border-surface-container/60">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px] text-secondary">
-                          chat
-                        </span>
-                        <span className="font-title-md text-body-md font-semibold text-on-surface">
-                          Notificações por WhatsApp
-                        </span>
-                      </div>
+              {/* Right Column (5 cols): Régua de Cobrança & Submit */}
+              <div className="lg:col-span-5 flex flex-col justify-between space-y-space-md">
+                <div className="bg-surface-container-low/70 p-space-md rounded-2xl space-y-space-md border border-surface-container">
+                  <div className="flex items-center gap-space-xs text-primary">
+                    <span className="material-symbols-outlined text-[20px]">
+                      notifications_active
+                    </span>
+                    <span className="font-title-md text-title-md font-bold text-on-surface">
+                      Régua de Notificações
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="flex items-center justify-between p-3 bg-surface-container-lowest rounded-xl border border-surface-container cursor-pointer">
+                      <span className="text-body-sm text-on-surface">Notificações WhatsApp</span>
                       <input
                         type="checkbox"
                         checked={enableWhatsapp}
                         onChange={(e) => setEnableWhatsapp(e.target.checked)}
-                        className="w-4 h-4 text-primary rounded"
+                        className="rounded text-primary"
                       />
-                    </div>
-                    {enableWhatsapp && (
-                      <div className="text-body-sm text-on-surface-variant pl-6 space-y-1">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" defaultChecked className="rounded text-primary" />
-                          <span>Aviso imediato ao criar link</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" defaultChecked className="rounded text-primary" />
-                          <span>Lembrete 2 dias antes do vencimento</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" defaultChecked className="rounded text-primary" />
-                          <span>Alerta no dia do vencimento</span>
-                        </label>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Email Notification */}
-                  <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm space-y-2 border border-surface-container/60">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px] text-primary">
-                          mail
-                        </span>
-                        <span className="font-title-md text-body-md font-semibold text-on-surface">
-                          Notificações por E-mail
-                        </span>
-                      </div>
+                    </label>
+                    <label className="flex items-center justify-between p-3 bg-surface-container-lowest rounded-xl border border-surface-container cursor-pointer">
+                      <span className="text-body-sm text-on-surface">Notificações por E-mail</span>
                       <input
                         type="checkbox"
                         checked={enableEmail}
                         onChange={(e) => setEnableEmail(e.target.checked)}
-                        className="w-4 h-4 text-primary rounded"
+                        className="rounded text-primary"
                       />
-                    </div>
+                    </label>
                   </div>
                 </div>
 
-                {/* Friendly URL Preview */}
-                <div className="p-space-md rounded-xl bg-surface-container-high/60 space-y-2 border border-surface-container">
-                  <span className="font-label-sm text-label-sm uppercase font-semibold text-outline">
-                    URL Amigável Gerada
-                  </span>
-                  <div className="flex items-center justify-between bg-surface-container-lowest px-3 py-2 rounded-lg font-body-sm text-on-surface overflow-hidden border border-surface-container">
-                    <span className="truncate font-mono text-[12px] text-primary">
-                      nextpay.link/silva-design/consultoria-ux
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={createMutation.isPending}
+                    className="w-full py-3.5 bg-primary hover:bg-primary-container text-on-primary rounded-xl font-title-md text-body-md font-semibold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">bolt</span>
+                    <span>
+                      {createMutation.isPending ? 'Criando Link...' : 'Gerar e Ativar Link'}
                     </span>
-                    <span className="material-symbols-outlined text-[16px] text-outline shrink-0 ml-2">
-                      lock
-                    </span>
-                  </div>
+                  </button>
                 </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-space-md flex flex-col sm:flex-row items-center gap-space-sm">
-                <button
-                  type="button"
-                  disabled
-                  title="Em breve (Fase 2)"
-                  className="w-full flex-1 flex items-center justify-center gap-space-xs bg-surface-container-high text-on-surface-variant/70 cursor-not-allowed px-space-lg py-space-md rounded-xl font-title-md text-title-md shadow-none opacity-80 font-semibold"
-                >
-                  <span className="material-symbols-outlined text-[20px]">bolt</span>
-                  <span>Gerar Link & Ativar Notificações</span>
-                  <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
-                    Em breve
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTitle('');
-                    setAmount('0,00');
-                  }}
-                  className="w-full sm:w-auto px-space-md py-space-md bg-surface-container-low hover:bg-surface-container-high text-on-surface rounded-xl font-title-md text-body-md transition-all border border-surface-container font-medium"
-                >
-                  Limpar
-                </button>
               </div>
             </div>
           </form>
@@ -626,178 +361,272 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                 Links Ativos & Vitrine de Pagamento
               </h2>
               <p className="font-body-sm text-body-sm text-on-surface-variant">
-                Links reutilizáveis com estatísticas de abertura e conversão em tempo real.
+                Links gerenciados com estatísticas reais persistidas no PostgreSQL.
               </p>
             </div>
 
-            <div className="flex items-center gap-space-xs">
-              <button
-                type="button"
-                onClick={() => setLinkFilter('all')}
-                className={`px-space-sm py-1 rounded-lg font-label-md text-label-md transition-all font-semibold ${
-                  linkFilter === 'all'
-                    ? 'bg-surface-container-lowest text-on-surface shadow-sm border border-surface-container'
-                    : 'text-on-surface-variant hover:bg-surface-container-low'
-                }`}
-              >
-                Todos ({paymentLinks.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setLinkFilter('recorrente')}
-                className={`px-space-sm py-1 rounded-lg font-label-md text-label-md transition-all font-semibold ${
-                  linkFilter === 'recorrente'
-                    ? 'bg-surface-container-lowest text-on-surface shadow-sm border border-surface-container'
-                    : 'text-on-surface-variant hover:bg-surface-container-low'
-                }`}
-              >
-                Recorrentes
-              </button>
-              <button
-                type="button"
-                onClick={() => setLinkFilter('avulsa')}
-                className={`px-space-sm py-1 rounded-lg font-label-md text-label-md transition-all font-semibold ${
-                  linkFilter === 'avulsa'
-                    ? 'bg-surface-container-lowest text-on-surface shadow-sm border border-surface-container'
-                    : 'text-on-surface-variant hover:bg-surface-container-low'
-                }`}
-              >
-                Avulsos
-              </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="text"
+                placeholder="Buscar link..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                className="px-3 py-1.5 bg-surface-container-low rounded-lg text-xs border border-surface-container text-on-surface outline-none"
+              />
+              <div className="flex items-center gap-1 bg-surface-container-low p-0.5 rounded-lg border border-surface-container">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLinkFilter('all');
+                    setPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded text-xs font-semibold ${
+                    linkFilter === 'all'
+                      ? 'bg-surface-container-lowest text-on-surface shadow-xs'
+                      : 'text-on-surface-variant'
+                  }`}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLinkFilter('recorrente');
+                    setPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded text-xs font-semibold ${
+                    linkFilter === 'recorrente'
+                      ? 'bg-surface-container-lowest text-on-surface shadow-xs'
+                      : 'text-on-surface-variant'
+                  }`}
+                >
+                  Recorrentes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLinkFilter('avulsa');
+                    setPage(1);
+                  }}
+                  className={`px-2.5 py-1 rounded text-xs font-semibold ${
+                    linkFilter === 'avulsa'
+                      ? 'bg-surface-container-lowest text-on-surface shadow-xs'
+                      : 'text-on-surface-variant'
+                  }`}
+                >
+                  Avulsos
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md">
-            {filteredLinks.map((link) => (
-              <article
-                key={link.id}
-                className="bg-surface-container-lowest p-space-md rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-space-md border border-surface-container/60"
-              >
-                <div className="space-y-space-sm">
-                  <div className="flex items-start justify-between gap-space-sm">
-                    <span
-                      className={`font-label-sm text-label-sm px-2 py-0.5 rounded-full font-semibold uppercase ${
-                        link.type === 'recorrente'
-                          ? 'bg-secondary-fixed/40 text-on-secondary-fixed'
-                          : 'bg-primary-fixed text-on-primary-fixed'
+          {isLoading ? (
+            <div className="py-16 text-center text-on-surface-variant flex flex-col items-center gap-3">
+              <span className="material-symbols-outlined animate-spin text-[36px] text-primary">
+                progress_activity
+              </span>
+              <p className="font-body-md text-body-md">Carregando links de pagamento...</p>
+            </div>
+          ) : isError ? (
+            <div className="py-8 text-center text-error bg-error-container/20 rounded-xl p-4">
+              <p className="font-semibold">Erro ao carregar links:</p>
+              <p className="text-sm">{(error as Error)?.message || 'Erro desconhecido'}</p>
+            </div>
+          ) : paymentLinks.length === 0 ? (
+            <div className="py-16 text-center text-on-surface-variant flex flex-col items-center gap-3 bg-surface-container-lowest rounded-xl border border-surface-container/60 p-8">
+              <span className="material-symbols-outlined text-[48px] text-outline">link_off</span>
+              <p className="font-body-lg font-semibold text-on-surface">Nenhum link encontrado</p>
+              <p className="text-body-sm max-w-md text-on-surface-variant">
+                Crie um link de pagamento utilizando o formulário acima.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-md">
+                {paymentLinks.map((link) => {
+                  const unitPriceFormatted = (link.amountCents / 100).toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                  });
+                  const url = `https://nextpay.link/silva-design/${link.slug}`;
+
+                  return (
+                    <article
+                      key={link.id}
+                      className={`bg-surface-container-lowest p-space-md rounded-2xl shadow-sm transition-all flex flex-col justify-between space-y-space-md border ${
+                        link.active
+                          ? 'border-surface-container/60 hover:shadow-md'
+                          : 'border-surface-container/30 opacity-70 bg-surface-container-low/40'
                       }`}
                     >
-                      {link.typeLabel}
-                    </span>
-                    <span className="flex items-center gap-1 font-body-sm text-body-sm text-secondary font-semibold">
-                      <span className="w-2 h-2 rounded-full bg-secondary"></span>
-                      {link.status}
-                    </span>
-                  </div>
+                      <div className="space-y-space-sm">
+                        <div className="flex items-start justify-between gap-space-sm">
+                          <span
+                            className={`font-label-sm text-label-sm px-2 py-0.5 rounded-full font-semibold uppercase ${
+                              link.billingType === 'recorrente'
+                                ? 'bg-secondary-fixed/40 text-on-secondary-fixed'
+                                : 'bg-primary-fixed text-on-primary-fixed'
+                            }`}
+                          >
+                            {link.billingType === 'recorrente'
+                              ? 'Recorrente Mensal'
+                              : 'Cobrança Avulsa'}
+                          </span>
+                          <span
+                            className={`flex items-center gap-1 font-body-sm text-body-sm font-semibold ${
+                              link.active ? 'text-secondary' : 'text-outline'
+                            }`}
+                          >
+                            <span
+                              className={`w-2 h-2 rounded-full ${link.active ? 'bg-secondary' : 'bg-outline'}`}
+                            ></span>
+                            {link.active ? 'Ativo' : 'Pausado'}
+                          </span>
+                        </div>
 
-                  <div>
-                    <h3 className="font-title-md text-title-md font-bold text-on-surface leading-snug">
-                      {link.title}
-                    </h3>
-                    <p className="font-body-sm text-body-sm text-on-surface-variant line-clamp-1 mt-0.5">
-                      {link.subtitle}
-                    </p>
-                  </div>
+                        <div>
+                          <h3 className="font-title-md text-title-md font-bold text-on-surface leading-snug">
+                            {link.title}
+                          </h3>
+                          <p className="font-body-sm text-body-sm text-on-surface-variant line-clamp-1 mt-0.5">
+                            {link.description || 'Checkout Transparente NextPay'}
+                          </p>
+                        </div>
 
-                  <div className="bg-surface-container-low p-space-sm rounded-xl space-y-1 border border-surface-container/60">
-                    <div className="flex items-center justify-between text-body-sm">
-                      <span className="text-on-surface-variant">Valor unitário:</span>
-                      <span className="font-numeric-md font-bold text-on-surface">
-                        {link.unitPriceFormatted}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-body-sm">
-                      <span className="text-on-surface-variant">Total faturado:</span>
-                      <span className="font-numeric-md font-bold text-secondary">
-                        {link.totalBilledFormatted}
-                      </span>
-                    </div>
-                  </div>
+                        <div className="bg-surface-container-low p-space-sm rounded-xl space-y-1 border border-surface-container/60">
+                          <div className="flex items-center justify-between text-body-sm">
+                            <span className="text-on-surface-variant">Valor unitário:</span>
+                            <span className="font-numeric-md font-bold text-on-surface">
+                              {unitPriceFormatted}
+                              {link.billingType === 'recorrente' ? '/mês' : ''}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-body-sm">
+                            <span className="text-on-surface-variant">Vendas registradas:</span>
+                            <span className="font-numeric-md font-bold text-secondary">
+                              {link.sales} {link.sales === 1 ? 'venda' : 'vendas'}
+                            </span>
+                          </div>
+                        </div>
 
-                  <div className="grid grid-cols-3 gap-1 text-center pt-1 font-body-sm">
-                    <div className="bg-surface-container-lowest p-1.5 rounded-lg border border-surface-container">
-                      <div className="font-numeric-md font-semibold text-on-surface">
-                        {link.sales}
+                        <div className="grid grid-cols-2 gap-1 text-center pt-1 font-body-sm">
+                          <div className="bg-surface-container-lowest p-1.5 rounded-lg border border-surface-container">
+                            <div className="font-numeric-md font-semibold text-on-surface">
+                              {link.views}
+                            </div>
+                            <span className="text-[10px] text-outline uppercase font-semibold">
+                              Acessos
+                            </span>
+                          </div>
+                          <div className="bg-surface-container-lowest p-1.5 rounded-lg border border-surface-container">
+                            <div className="font-numeric-md font-semibold text-secondary">
+                              {link.views > 0
+                                ? ((link.sales / link.views) * 100).toFixed(1)
+                                : '0.0'}
+                              %
+                            </div>
+                            <span className="text-[10px] text-outline uppercase font-semibold">
+                              Conversão
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-[11px] text-on-surface-variant">Vendas</div>
-                    </div>
-                    <div className="bg-surface-container-lowest p-1.5 rounded-lg border border-surface-container">
-                      <div className="font-numeric-md font-semibold text-on-surface">
-                        {link.views}
+
+                      <div className="pt-2 border-t border-surface-container space-y-2">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyLink(url)}
+                            className="flex-1 py-1.5 px-2 bg-surface-container-low hover:bg-surface-container text-on-surface rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">
+                              content_copy
+                            </span>
+                            <span>Copiar</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onOpenCheckoutWithLink(link)}
+                            className="flex-1 py-1.5 px-2 bg-primary hover:bg-primary-container text-on-primary rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-colors shadow-xs"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">
+                              shopping_cart
+                            </span>
+                            <span>Checkout</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onOpenQrPix(link.title, unitPriceFormatted)}
+                            className="p-1.5 hover:bg-surface-container text-secondary rounded-lg transition-colors"
+                            title="Ver QR Code Pix"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">qr_code_2</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleMutation.mutate(link.id)}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              link.active
+                                ? 'hover:bg-warning-container/20 text-warning'
+                                : 'hover:bg-secondary-container/20 text-secondary'
+                            }`}
+                            title={link.active ? 'Pausar Link' : 'Ativar Link'}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">
+                              {link.active ? 'pause_circle' : 'play_circle'}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(`Deseja excluir o link "${link.title}"?`)) {
+                                deleteMutation.mutate(link.id);
+                              }
+                            }}
+                            className="p-1.5 hover:bg-error-container/20 text-error rounded-lg transition-colors"
+                            title="Excluir Link"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
                       </div>
-                      <div className="text-[11px] text-on-surface-variant">Acessos</div>
-                    </div>
-                    <div className="bg-surface-container-lowest p-1.5 rounded-lg border border-surface-container">
-                      <div className="font-numeric-md font-semibold text-secondary">
-                        {link.conversionRate}
-                      </div>
-                      <div className="text-[11px] text-on-surface-variant">Conversão</div>
-                    </div>
-                  </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              {/* Paginação Real */}
+              <div className="flex items-center justify-between pt-4 border-t border-surface-container text-body-sm text-on-surface-variant">
+                <span>
+                  Mostrando {paymentLinks.length} de {total} links cadastrados
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="px-3 py-1 bg-surface-container-low hover:bg-surface-container rounded disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-on-surface"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-xs font-semibold text-on-surface">
+                    Página {page} de {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    className="px-3 py-1 bg-surface-container-low hover:bg-surface-container rounded disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-on-surface"
+                  >
+                    Próxima
+                  </button>
                 </div>
-
-                <div className="space-y-space-sm pt-space-xs border-t border-surface-container">
-                  <div className="flex items-center justify-between bg-surface-container-low px-2 py-1 rounded-lg border border-surface-container/60">
-                    <span className="font-mono text-[11px] text-on-surface-variant truncate">
-                      {link.url}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyLink(link.url)}
-                      className="text-primary hover:text-primary-container p-1"
-                      title="Copiar Link"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">content_copy</span>
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleCopyLink(link.url)}
-                      className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-[11px] transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[18px] text-primary">
-                        copy_all
-                      </span>
-                      <span>Copiar</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onOpenQrPix(link.title, link.unitPriceFormatted)}
-                      className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-[11px] transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[18px] text-secondary">
-                        qr_code
-                      </span>
-                      <span>QR Pix</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleShareWhatsapp(link)}
-                      className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-[11px] transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[18px] text-secondary">
-                        send
-                      </span>
-                      <span>WhatsApp</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onOpenCheckoutWithLink(link)}
-                      className="flex flex-col items-center justify-center p-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface font-label-sm text-[11px] transition-colors"
-                      title="Abrir tela de checkout do cliente"
-                    >
-                      <span className="material-symbols-outlined text-[18px] text-primary">
-                        preview
-                      </span>
-                      <span>Checkout</span>
-                    </button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
+              </div>
+            </>
+          )}
         </section>
       </div>
     </div>

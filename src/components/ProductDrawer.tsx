@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { ProductItem } from '../data/mockData';
+import { ProductData } from '../api/client';
 
 interface ProductDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveProduct: (newProduct: ProductItem) => void;
+  onSaveProduct: (newProduct: Partial<ProductData>) => void;
   onShowToast: (msg: string) => void;
+  isSaving?: boolean;
 }
 
 export const ProductDrawer: React.FC<ProductDrawerProps> = ({
@@ -13,6 +14,7 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
   onClose,
   onSaveProduct,
   onShowToast,
+  isSaving = false,
 }) => {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<'servicos' | 'digitais' | 'recorrentes' | 'projetos'>(
@@ -20,55 +22,39 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
   );
   const [billingType, setBillingType] = useState<'avulsa' | 'recorrente'>('avulsa');
   const [price, setPrice] = useState('450,00');
-  const [installments, setInstallments] = useState('12x');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
 
   if (!isOpen) return null;
 
-  const categoryLabelMap = {
-    servicos: 'Serviço Profissional',
-    digitais: 'Produto Digital',
-    recorrentes: 'Assinatura Recorrente',
-    projetos: 'Projeto Sob Medida',
-  };
-
-  const getCleanPrice = () => {
+  const getCleanPriceInCents = () => {
     const cleanStr = price.replace(/\./g, '').replace(',', '.').trim();
     const num = parseFloat(cleanStr);
-    return isNaN(num) ? 0 : num;
+    return isNaN(num) ? 0 : Math.round(num * 100);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      onShowToast('Informe o título do item.');
+      onShowToast('Informe o título do produto.');
       return;
     }
 
-    const numericPrice = getCleanPrice();
-    const newProduct: ProductItem = {
-      id: `prod-${Date.now()}`,
-      title: title.trim(),
-      description:
-        description.trim() || 'Descrição dos entregáveis e benefícios inclusos no pacote.',
-      category,
-      categoryLabel: categoryLabelMap[category],
-      price: numericPrice,
-      priceFormatted: `R$ ${price || '0,00'}${billingType === 'recorrente' ? '/mês' : ''}`,
-      billingType,
-      installmentsText:
-        billingType === 'recorrente' ? 'Débito recorrente mensal' : `Até ${installments} no cartão`,
-      imageUrl:
-        imageUrl.trim() ||
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuBdOzWFlzQ-IwFq8v30Kx900QdiI2m6XjwECu_4wBONT6FbAStbJoGGNtNkwI8sab4pvYy4nS57KOIea5foq50ZI7EItbVhbrLP3nmZnhB-ES_c3yX2-DmRasBMcjm-YbnFKXUSxnh9_pmM2OnpClggsxKubahzxo9t-rDeHh_e5vEQ63qixUpkFHYrtetBY18wVCxMkm3k_GT0RFaTz1w3gcUN_hnr0tFtUveDpxiiKPQbJeAnB0M',
-      salesCount: 0,
-      statsText: 'Novo item • 0 vendas',
-    };
+    const priceCents = getCleanPriceInCents();
+    if (priceCents <= 0) {
+      onShowToast('Informe um valor válido maior que zero.');
+      return;
+    }
 
-    onSaveProduct(newProduct);
-    onShowToast(`Item "${newProduct.title}" cadastrado e link de checkout ativo!`);
-    onClose();
+    onSaveProduct({
+      title: title.trim(),
+      description: description.trim() || null,
+      category,
+      priceCents,
+      billingType,
+      imageUrl: imageUrl.trim() || null,
+      active: true,
+    });
   };
 
   return (
@@ -98,92 +84,27 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
-            title="Fechar gaveta"
+            className="p-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
-        {/* Drawer Content Scrollable Area */}
-        <div className="flex-1 overflow-y-auto p-space-lg flex flex-col gap-space-lg">
-          {/* Live Preview Container (Simulating Client Checkout) */}
-          <div className="flex flex-col gap-space-xs">
-            <span className="font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold">
-              Pré-visualização do Link de Pagamento (Visão do Cliente)
-            </span>
-            <div className="bg-surface-container-low p-space-md rounded-xl border border-surface-container">
-              <div className="bg-surface-container-lowest rounded-lg p-space-md shadow-sm flex flex-col sm:flex-row gap-space-md border border-surface-container/60">
-                <div className="w-full sm:w-28 h-28 rounded-lg bg-surface-container overflow-hidden flex-shrink-0 flex items-center justify-center relative">
-                  {imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt="Preview"
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <span className="material-symbols-outlined text-[32px] text-outline">
-                      image
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex flex-col justify-between flex-1">
-                  <div>
-                    <span className="px-space-xs py-0.5 rounded bg-surface-container text-primary font-label-sm text-label-sm uppercase font-semibold">
-                      {categoryLabelMap[category]}
-                    </span>
-                    <h3 className="font-title-md text-title-md text-on-surface mt-1 font-semibold truncate">
-                      {title || 'Título do Produto ou Serviço'}
-                    </h3>
-                    <p className="font-body-sm text-body-sm text-on-surface-variant line-clamp-2 mt-0.5">
-                      {description ||
-                        'Descrição breve de como este item agrega valor ao seu cliente...'}
-                    </p>
-                  </div>
-
-                  <div className="flex items-baseline justify-between mt-space-sm pt-space-xs border-t border-surface-container/60">
-                    <div>
-                      <span className="font-label-sm text-label-sm text-outline block">
-                        {billingType === 'recorrente' ? 'Mensalidade Recorrente' : 'Total a Pagar'}
-                      </span>
-                      <span className="font-numeric-lg text-headline-sm text-on-surface font-bold">
-                        R$ {price || '0,00'}
-                        {billingType === 'recorrente' && (
-                          <span className="text-xs font-normal">/mês</span>
-                        )}
-                      </span>
-                    </div>
-                    <span className="font-label-sm text-label-sm text-secondary font-medium">
-                      {billingType === 'recorrente'
-                        ? 'Débito recorrente'
-                        : `Até ${installments} no cartão`}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Form */}
-          <form id="item-form" onSubmit={handleSubmit} className="flex flex-col gap-space-md">
+        {/* Drawer Content */}
+        <div className="flex-1 overflow-y-auto p-space-lg">
+          <form id="product-form" onSubmit={handleSubmit} className="flex flex-col gap-space-md">
             {/* Field: Title */}
             <div className="flex flex-col gap-1">
-              <label
-                className="font-label-md text-label-md text-on-surface font-semibold"
-                htmlFor="input-title"
-              >
-                Título do Item <span className="text-error">*</span>
+              <label className="font-label-md text-label-md text-on-surface font-semibold">
+                Título do Item / Serviço *
               </label>
               <input
-                id="input-title"
-                required
                 type="text"
+                required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ex: Sessão Estratégica de Marketing"
-                className="w-full px-space-md py-2.5 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline border border-surface-container focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary transition-all"
+                placeholder="Ex: Consultoria Estratégica em Design UX/UI"
+                className="w-full px-space-md py-2.5 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md border border-surface-container focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary transition-all placeholder:text-outline"
               />
             </div>
 
@@ -211,27 +132,27 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
 
               <div className="flex flex-col gap-1">
                 <label className="font-label-md text-label-md text-on-surface font-semibold">
-                  Tipo de Cobrança
+                  Modelo de Cobrança
                 </label>
-                <div className="grid grid-cols-2 gap-1 bg-surface-container-low p-1 rounded-lg border border-surface-container">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setBillingType('avulsa')}
-                    className={`px-2 py-1.5 rounded-md font-label-md text-label-md transition-all font-semibold ${
+                    className={`py-2 px-3 rounded-lg border font-label-md text-label-md font-medium transition-all text-center ${
                       billingType === 'avulsa'
-                        ? 'bg-surface-container-lowest text-primary shadow-sm'
-                        : 'text-on-surface-variant hover:text-on-surface'
+                        ? 'bg-primary text-on-primary border-primary shadow-xs'
+                        : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-container'
                     }`}
                   >
-                    Única (Avulsa)
+                    Avulsa
                   </button>
                   <button
                     type="button"
                     onClick={() => setBillingType('recorrente')}
-                    className={`px-2 py-1.5 rounded-md font-label-md text-label-md transition-all font-semibold ${
+                    className={`py-2 px-3 rounded-lg border font-label-md text-label-md font-medium transition-all text-center ${
                       billingType === 'recorrente'
-                        ? 'bg-surface-container-lowest text-tertiary shadow-sm'
-                        : 'text-on-surface-variant hover:text-on-surface'
+                        ? 'bg-primary text-on-primary border-primary shadow-xs'
+                        : 'bg-surface-container-low text-on-surface-variant border-surface-container hover:bg-surface-container'
                     }`}
                   >
                     Recorrente
@@ -240,90 +161,52 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
               </div>
             </div>
 
-            {/* Field: Base Price and Max Installments */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-md">
-              <div className="flex flex-col gap-1">
-                <label
-                  className="font-label-md text-label-md text-on-surface font-semibold"
-                  htmlFor="input-price"
-                >
-                  Preço Base (R$) <span className="text-error">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 font-numeric-md text-outline">R$</span>
-                  <input
-                    id="input-price"
-                    required
-                    type="text"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="450,00"
-                    className="w-full pl-9 pr-space-md py-2.5 rounded-lg bg-surface-container-low text-on-surface font-numeric-md text-numeric-md placeholder:text-outline border border-surface-container focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary transition-all"
-                  />
-                </div>
-                <span className="font-label-sm text-label-sm text-secondary font-medium">
-                  Líquido Pix: ~99,01% imediato (D+0)
+            {/* Field: Price */}
+            <div className="flex flex-col gap-1">
+              <label className="font-label-md text-label-md text-on-surface font-semibold">
+                Valor Base de Venda (R$) *
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-3 text-on-surface-variant font-bold text-body-md">
+                  R$
                 </span>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="font-label-md text-label-md text-on-surface font-semibold">
-                  Parcelamento Máximo
-                </label>
-                <select
-                  value={installments}
-                  onChange={(e) => setInstallments(e.target.value)}
-                  className="w-full px-space-md py-2.5 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md border border-surface-container focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary transition-all"
-                >
-                  <option value="1x">Somente à vista (1x)</option>
-                  <option value="3x">Até 3x sem juros</option>
-                  <option value="6x">Até 6x com repasse</option>
-                  <option value="12x">Até 12x no cartão</option>
-                </select>
+                <input
+                  type="text"
+                  required
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="0,00"
+                  className="w-full bg-surface-container-low pl-10 pr-space-md py-2.5 rounded-lg border border-surface-container text-body-md font-numeric-md font-bold focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary text-on-surface"
+                />
               </div>
             </div>
 
             {/* Field: Description */}
             <div className="flex flex-col gap-1">
-              <label
-                className="font-label-md text-label-md text-on-surface font-semibold"
-                htmlFor="input-desc"
-              >
-                Descrição do Produto ou Serviço
+              <label className="font-label-md text-label-md text-on-surface font-semibold">
+                Descrição dos Entregáveis
               </label>
               <textarea
-                id="input-desc"
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Explique os entregáveis, formato de execução ou bônus inclusos..."
-                className="w-full px-space-md py-2.5 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline border border-surface-container focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary transition-all"
+                placeholder="Detalhe o que está incluso no pacote para exibição na página de pagamento..."
+                className="w-full px-space-md py-2 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md border border-surface-container focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary transition-all resize-none placeholder:text-outline"
               />
             </div>
 
-            {/* Field: Cover Image Upload URL / Presets */}
+            {/* Field: Image URL */}
             <div className="flex flex-col gap-1">
               <label className="font-label-md text-label-md text-on-surface font-semibold">
-                Imagem de Capa do Item
+                URL da Capa ou Foto do Item
               </label>
-              <div
-                onClick={() => {
-                  setImageUrl(
-                    'https://lh3.googleusercontent.com/aida-public/AB6AXuBuyIQJXrgS104egwX6vtcxZk5Vl6cQU-I-F3VG8ln5qWr04iARdxvK0P-vJREauVxHmYHkjn1yn_wY2nmYoRs-reBccbmC4GjcS9ALVQxXBODFsJA6dQxnGk2JX2ss2Gdnk6e-0_QZspaf-QkY1FOQUk-sF9N9TKPAYtdJyvCZi8Tq-bxXR_rx2uMZ3nJ262wCYDOT_xLaO9eVAIsv7IyMKoVLWfJcHR79Udhk-nW8duK1BEigKFg',
-                  );
-                }}
-                className="bg-surface-container-low p-space-md rounded-xl flex flex-col items-center justify-center text-center cursor-pointer hover:bg-surface-container-high transition-colors border border-dashed border-outline-variant"
-              >
-                <span className="material-symbols-outlined text-[28px] text-primary mb-1">
-                  cloud_upload
-                </span>
-                <span className="font-label-md text-label-md text-on-surface font-medium">
-                  Clique para selecionar imagem ou usar exemplo de alta definição
-                </span>
-                <span className="font-body-sm text-body-sm text-outline mt-0.5">
-                  JPG, PNG ou WEBP até 5MB
-                </span>
-              </div>
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://exemplo.com/imagem.jpg"
+                className="w-full px-space-md py-2.5 rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md border border-surface-container focus:outline-none focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary transition-all placeholder:text-outline"
+              />
             </div>
           </form>
         </div>
@@ -338,16 +221,13 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
             Cancelar
           </button>
           <button
-            type="button"
-            disabled
-            title="Em breve (Fase 4)"
-            className="flex items-center gap-space-xs bg-surface-container-high text-on-surface-variant/70 cursor-not-allowed px-space-lg py-2.5 rounded-lg font-label-md text-label-md font-semibold opacity-80"
+            type="submit"
+            form="product-form"
+            disabled={isSaving}
+            className="flex items-center gap-space-xs bg-primary hover:bg-primary-container text-on-primary px-space-lg py-2.5 rounded-lg font-label-md text-label-md font-semibold transition-all shadow-sm disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-[18px]">check</span>
-            <span>Salvar e Gerar Link</span>
-            <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
-              Em breve
-            </span>
+            <span>{isSaving ? 'Salvando...' : 'Salvar Produto'}</span>
           </button>
         </div>
       </aside>

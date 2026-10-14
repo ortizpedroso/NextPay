@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ProductItem, PaymentLink } from '../data/mockData';
+import { ProductData, PaymentLinkData } from '../api/client';
 
 interface CheckoutViewProps {
-  selectedItem?: ProductItem | PaymentLink | null;
+  selectedItem?: ProductData | PaymentLinkData | null;
   onBackToDashboard: () => void;
   onShowToast: (msg: string) => void;
 }
@@ -39,18 +39,22 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   const formattedCountdown = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   // Item details fallback to original screen item
-  const isProduct = Boolean(selectedItem && 'price' in selectedItem);
-  const isLink = Boolean(selectedItem && 'unitPrice' in selectedItem);
-  const productItem = isProduct ? (selectedItem as ProductItem) : null;
-  const linkItem = isLink ? (selectedItem as PaymentLink) : null;
+  const isProduct = Boolean(selectedItem && 'priceCents' in selectedItem);
+  const isLink = Boolean(selectedItem && 'amountCents' in selectedItem);
+  const productItem = isProduct ? (selectedItem as ProductData) : null;
+  const linkItem = isLink ? (selectedItem as PaymentLinkData) : null;
 
   const itemTitle = selectedItem?.title || 'Identidade Visual Completa + Manual de Marca';
   const itemDescription =
     productItem?.description ||
-    linkItem?.subtitle ||
+    linkItem?.description ||
     'Desenvolvimento de branding completo, tipografia proprietária, guia de paleta de cores, arquivos em alta resolução para web/print e transfer de propriedade intelectual.';
 
-  const basePrice = productItem?.price ?? linkItem?.unitPrice ?? 1800.0;
+  const basePrice = productItem
+    ? productItem.priceCents / 100
+    : linkItem
+      ? linkItem.amountCents / 100
+      : 1800.0;
   const pixDiscount = basePrice * 0.05;
   const pixTotal = basePrice - pixDiscount;
 

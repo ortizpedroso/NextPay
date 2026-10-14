@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { NEXTPAY_ACCOUNT } from '../../data/mockData';
+import { useQuery } from '@tanstack/react-query';
+import { api, DEFAULT_ACCOUNT } from '../../api/client';
 
 interface WithdrawModalProps {
   isOpen: boolean;
@@ -19,6 +20,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   _onConfirmWithdraw?: WithdrawModalProps['onConfirmWithdraw'];
   _onShowToast?: WithdrawModalProps['onShowToast'];
 }) => {
+  const { data: account } = useQuery({
+    queryKey: ['account'],
+    queryFn: () => api.getAccount(),
+    initialData: DEFAULT_ACCOUNT,
+  });
   const [withdrawAmount, setWithdrawAmount] = useState('18420.50');
 
   if (!isOpen) return null;
@@ -60,7 +66,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             <div className="flex justify-between text-body-sm">
               <span className="text-on-surface-variant">Conta de Destino:</span>
               <span className="font-semibold text-primary truncate max-w-[200px]">
-                {NEXTPAY_ACCOUNT.bankName} ({NEXTPAY_ACCOUNT.account})
+                {account.bankName || 'NextPay I.P S.A'} ({account.account || '7342797-3'})
               </span>
             </div>
             <div className="flex justify-between text-body-sm">

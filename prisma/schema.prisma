@@ -1,0 +1,242 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum BillingType {
+  avulsa
+  recorrente
+}
+
+enum PaymentMethod {
+  PIX
+  BOLETO
+  CREDIT_CARD
+}
+
+enum ChargeStatus {
+  PENDING
+  RECEIVED
+  CONFIRMED
+  OVERDUE
+  REFUNDED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  CANCELLED
+  OVERDUE
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum WebhookStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+model Account {
+  id              String        @id @default(cuid())
+  name            String
+  email           String        @unique
+  cpfCnpj         String
+  phone           String?
+  bankCode        String?
+  bankName        String?
+  agency          String?
+  account         String?
+  accountType     String?
+  pixKey          String?
+  asaasWalletId   String?
+  asaasApiKey     String?
+  balanceCents    Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  customers       Customer[]
+  products        Product[]
+  paymentLinks    PaymentLink[]
+  charges         Charge[]
+  subscriptions   Subscription[]
+  withdrawals     Withdrawal[]
+  webhookEvents   WebhookEvent[]
+}
+
+model Customer {
+  id            String        @id @default(cuid())
+  accountId     String
+  name          String
+  cpfCnpj       String
+  email         String
+  phone         String?
+  city          String?
+  state         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  account       Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  charges       Charge[]
+  subscriptions Subscription[]
+
+  @@index([accountId])
+  @@index([email])
+  @@index([cpfCnpj])
+  @@index([name])
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  accountId     String
+  title         String
+  description   String?
+  category      String        @default("servicos")
+  priceCents    Int
+  billingType   BillingType   @default(avulsa)
+  cycle         String?
+  imageUrl      String?
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  account       Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  paymentLinks  PaymentLink[]
+
+  @@index([accountId])
+  @@index([title])
+  @@index([category])
+  @@index([active])
+}
+
+model PaymentLink {
+  id              String        @id @default(cuid())
+  accountId       String
+  productId       String?
+  title           String
+  description     String?
+  amountCents     Int
+  billingType     BillingType   @default(avulsa)
+  slug            String
+  active          Boolean       @default(true)
+  maxInstallments Int           @default(12)
+  enablePix       Boolean       @default(true)
+  enableCard      Boolean       @default(true)
+  enableBoleto    Boolean       @default(true)
+  views           Int           @default(0)
+  sales           Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  account         Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  product         Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  charges         Charge[]
+
+  @@index([accountId])
+  @@index([slug])
+  @@index([active])
+  @@index([title])
+}
+
+model Charge {
+  id              String        @id @default(cuid())
+  accountId       String
+  customerId      String?
+  paymentLinkId   String?
+  description     String
+  amountCents     Int
+  feeCents        Int           @default(0)
+  netCents        Int           @default(0)
+  method          PaymentMethod
+  status          ChargeStatus  @default(PENDING)
+  dueDate         DateTime
+  paidAt          DateTime?
+  asaasId         String?
+  pixQrCode       String?
+  pixCopyPaste    String?
+  boletoBarcode   String?
+  boletoUrl       String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  account         Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  customer        Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  paymentLink     PaymentLink?  @relation(fields: [paymentLinkId], references: [id], onDelete: SetNull)
+
+  @@index([accountId])
+  @@index([customerId])
+  @@index([status])
+  @@index([method])
+  @@index([dueDate])
+  @@index([createdAt])
+}
+
+model Subscription {
+  id            String             @id @default(cuid())
+  accountId     String
+  customerId    String?
+  title         String
+  priceCents    Int
+  cycle         String             @default("MONTHLY")
+  method        PaymentMethod      @default(CREDIT_CARD)
+  status        SubscriptionStatus @default(ACTIVE)
+  nextBilling   DateTime?
+  asaasId       String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  account       Account            @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  customer      Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([accountId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model Withdrawal {
+  id                 String           @id @default(cuid())
+  accountId          String
+  amountCents        Int
+  status             WithdrawalStatus @default(PENDING)
+  destinationBank    String?
+  destinationAgency  String?
+  destinationAccount String?
+  destinationPixKey  String?
+  asaasId            String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  account            Account          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WebhookEvent {
+  id            String        @id @default(cuid())
+  accountId     String
+  event         String
+  payload       String
+  status        WebhookStatus @default(PENDING)
+  processedAt   DateTime?
+  error         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  account       Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([event])
+  @@index([status])
+  @@index([createdAt])
+}

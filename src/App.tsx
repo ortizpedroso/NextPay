@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { DashboardView } from './views/DashboardView';
@@ -18,27 +19,22 @@ import { QrPixModal } from './components/modals/QrPixModal';
 import { WithdrawModal } from './components/modals/WithdrawModal';
 import { ReceiptModal } from './components/modals/ReceiptModal';
 import { NewChargeModal } from './components/modals/NewChargeModal';
-import {
-  INITIAL_PRODUCTS,
-  INITIAL_PAYMENT_LINKS,
-  INITIAL_TRANSACTIONS,
-  ProductItem,
-  PaymentLink,
-  Transaction,
-} from './data/mockData';
+import { api, DEFAULT_ACCOUNT, ProductData, PaymentLinkData, ChargeData } from './api/client';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // Core reactive data
-  const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
-  const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>(INITIAL_PAYMENT_LINKS);
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
-  const [availableBalance, setAvailableBalance] = useState(48920.5);
+  // Active account data from API
+  const { data: account } = useQuery({
+    queryKey: ['account'],
+    queryFn: () => api.getAccount(),
+    initialData: DEFAULT_ACCOUNT,
+  });
+  const availableBalance = account.balanceCents / 100;
 
   // Active item for checkout simulation
-  const [checkoutItem, setCheckoutItem] = useState<ProductItem | PaymentLink | null>(null);
+  const [checkoutItem, setCheckoutItem] = useState<ProductData | PaymentLinkData | null>(null);
 
   // Modals & Drawers
   const [isProductDrawerOpen, setIsProductDrawerOpen] = useState(false);
@@ -59,7 +55,7 @@ export default function App() {
   // Receipt Modal
   const [receiptModalData, setReceiptModalData] = useState<{
     isOpen: boolean;
-    tx?: Transaction;
+    charge?: ChargeData;
   }>({
     isOpen: false,
   });
@@ -74,74 +70,44 @@ export default function App() {
     }, 2800);
   };
 
-  // Handlers
-  const handleAddProduct = (newProd: ProductItem) => {
-    setProducts([newProd, ...products]);
-  };
-
-  const handleAddPaymentLink = (newLink: PaymentLink) => {
-    setPaymentLinks([newLink, ...paymentLinks]);
-  };
-
-  const handleCreateCharge = (charge: {
+  const handleCreateCharge = async (charge: {
     clientName: string;
     description: string;
     amount: number;
     method: 'Pix' | 'Cartão' | 'Boleto';
   }) => {
-    const fee =
-      charge.method === 'Pix'
-        ? 2.48
-        : charge.method === 'Boleto'
-          ? charge.amount * 0.01 + 2.48
-          : charge.amount * 0.0399 + 0.98;
+    try {
+      const methodEnum =
+        charge.method === 'Pix' ? 'PIX' : charge.method === 'Boleto' ? 'BOLETO' : 'CREDIT_CARD';
 
-    const net = charge.amount - fee;
-    const profit = charge.method === 'Pix' ? 0.49 : charge.amount * 0.01 + 0.49;
-
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
-      clientName: charge.clientName,
-      clientDoc: '***.000.000-**',
-      avatarInitials: charge.clientName.slice(0, 2).toUpperCase(),
-      description: charge.description,
-      code: `#PAY-${Math.floor(10000 + Math.random() * 90000)}`,
-      method: charge.method,
-      methodDetail:
-        charge.method === 'Pix'
-          ? 'Pix D+0 Instantâneo'
-          : charge.method === 'Cartão'
-            ? 'Cartão 1x'
-            : 'Boleto CIP',
-      date: 'Agora',
-      grossAmount: charge.amount,
-      grossAmountFormatted: `R$ ${charge.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      gatewayFeeFormatted: `- R$ ${fee.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      gatewayProfitFormatted: `+ R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      netAmountFormatted: `R$ ${net.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      status: charge.method === 'Pix' ? 'Liquidado' : 'Aguardando',
-      dueDate: 'Hoje',
-    };
-
-    setTransactions([newTx, ...transactions]);
-
-    if (charge.method === 'Pix') {
-      setAvailableBalance((prev) => prev + net);
+      await api.createCharge({
+        description: charge.description,
+        amountCents: Math.round(charge.amount * 100),
+        method: methodEnum,
+        dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
+      });
+      showToast('Cobrança gerada com sucesso no sistema!');
+      setIsNewChargeModalOpen(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao criar cobrança';
+      showToast(`Erro ao criar cobrança: ${msg}`);
     }
   };
 
   const handleConfirmWithdraw = (amount: number) => {
-    setAvailableBalance((prev) => Math.max(0, prev - amount));
+    showToast(`Solicitação de saque de R$ ${amount.toFixed(2)} registrada!`);
+    setIsWithdrawModalOpen(false);
   };
 
-  const handleOpenCheckoutWithProduct = (product: ProductItem) => {
-    setCheckoutItem(product);
-    setCurrentView('checkout');
-  };
-
-  const handleOpenCheckoutWithLink = (link: PaymentLink) => {
-    setCheckoutItem(link);
-    setCurrentView('checkout');
+  const handleSaveProduct = async (newProduct: Partial<ProductData>) => {
+    try {
+      await api.createProduct(newProduct);
+      showToast('Produto cadastrado com sucesso!');
+      setIsProductDrawerOpen(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao cadastrar produto';
+      showToast(`Erro ao salvar produto: ${msg}`);
+    }
   };
 
   return (
@@ -194,13 +160,11 @@ export default function App() {
             <main className="w-full pt-16 bg-surface min-h-screen flex-1">
               {currentView === 'dashboard' && (
                 <DashboardView
-                  transactions={transactions}
-                  availableBalance={availableBalance}
                   onOpenWithdraw={() => setIsWithdrawModalOpen(true)}
-                  onOpenReceipt={(tx) =>
+                  onOpenReceipt={(charge) =>
                     setReceiptModalData({
                       isOpen: true,
-                      tx,
+                      charge,
                     })
                   }
                   onOpenQrPix={(title, price) =>
@@ -228,9 +192,6 @@ export default function App() {
                 currentView === 'links-pagamento' ||
                 currentView === 'pix') && (
                 <PaymentLinksView
-                  paymentLinks={paymentLinks}
-                  transactions={transactions}
-                  onAddPaymentLink={handleAddPaymentLink}
                   onOpenQrPix={(title, price) =>
                     setPixModalData({
                       isOpen: true,
@@ -238,22 +199,20 @@ export default function App() {
                       price,
                     })
                   }
-                  onOpenReceipt={(tx) =>
-                    setReceiptModalData({
-                      isOpen: true,
-                      tx,
-                    })
-                  }
-                  onOpenCheckoutWithLink={handleOpenCheckoutWithLink}
+                  onOpenCheckoutWithLink={(link) => {
+                    setCheckoutItem(link);
+                    setCurrentView('checkout');
+                  }}
                   onShowToast={showToast}
                 />
               )}
 
               {currentView === 'produtos-e-servicos' && (
                 <ProductsView
-                  products={products}
-                  onOpenDrawer={() => setIsProductDrawerOpen(true)}
-                  onOpenCheckoutWithProduct={handleOpenCheckoutWithProduct}
+                  onOpenCheckoutWithProduct={(prod) => {
+                    setCheckoutItem(prod);
+                    setCurrentView('checkout');
+                  }}
                   onShowToast={showToast}
                 />
               )}
@@ -278,7 +237,7 @@ export default function App() {
       <ProductDrawer
         isOpen={isProductDrawerOpen}
         onClose={() => setIsProductDrawerOpen(false)}
-        onSaveProduct={handleAddProduct}
+        onSaveProduct={handleSaveProduct}
         onShowToast={showToast}
       />
 
@@ -302,10 +261,27 @@ export default function App() {
       <ReceiptModal
         isOpen={receiptModalData.isOpen}
         onClose={() => setReceiptModalData({ isOpen: false })}
-        clientName={receiptModalData.tx?.clientName || 'Estúdio Criativo Silva'}
-        amount={receiptModalData.tx?.grossAmountFormatted || 'R$ 4.250,00'}
-        method={receiptModalData.tx?.methodDetail || 'Liquidação Automática Pix D+0'}
-        code={receiptModalData.tx?.code || '#NEXTPAY-LIQ-9842109'}
+        clientName={receiptModalData.charge?.description || 'Liquidação NextPay'}
+        amount={
+          receiptModalData.charge
+            ? (receiptModalData.charge.amountCents / 100).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+              })
+            : 'R$ 4.250,00'
+        }
+        method={
+          receiptModalData.charge?.method === 'PIX'
+            ? 'Pix D+0 Instantâneo'
+            : receiptModalData.charge?.method === 'BOLETO'
+              ? 'Boleto Bancário CIP'
+              : 'Cartão de Crédito'
+        }
+        code={
+          receiptModalData.charge?.id
+            ? `#PAY-${receiptModalData.charge.id.slice(-6).toUpperCase()}`
+            : '#NEXTPAY-LIQ-9842109'
+        }
         onShowToast={showToast}
       />
 

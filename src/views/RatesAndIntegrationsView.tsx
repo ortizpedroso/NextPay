@@ -1,5 +1,117 @@
 import React, { useState } from 'react';
-import { INITIAL_WEBHOOK_LOGS, WebhookLog, NEXTPAY_ACCOUNT } from '../data/mockData';
+import { useQuery } from '@tanstack/react-query';
+import { api, DEFAULT_ACCOUNT } from '../api/client';
+
+export interface WebhookLog {
+  id: string;
+  event: string;
+  code: string;
+  detail: string;
+  timeAgo: string;
+  latencyMs: number;
+  status: number;
+  payload: Record<string, unknown>;
+}
+
+export const INITIAL_WEBHOOK_LOGS: WebhookLog[] = [
+  {
+    id: 'wh-1',
+    event: 'PAYMENT_RECEIVED',
+    code: 'pay_89123049102',
+    detail: 'Pix R$ 450,00 - Consultoria',
+    timeAgo: 'Há 2 min',
+    latencyMs: 142,
+    status: 200,
+    payload: {
+      event: 'PAYMENT_RECEIVED',
+      payment: {
+        id: 'pay_89123049102',
+        value: 450.0,
+        netValue: 443.02,
+        gatewayProfit: 4.99,
+        billingType: 'PIX',
+        status: 'RECEIVED',
+        account: '7342797-3',
+        bank: '461 - NextPay I.P S.A',
+        confirmedDate: new Date().toISOString(),
+      },
+    },
+  },
+  {
+    id: 'wh-2',
+    event: 'PAYMENT_RECEIVED',
+    code: 'pay_78291040184',
+    detail: 'Cartão R$ 1.250,00 - 3x',
+    timeAgo: 'Há 7 min',
+    latencyMs: 198,
+    status: 200,
+    payload: {
+      event: 'PAYMENT_RECEIVED',
+      payment: {
+        id: 'pay_78291040184',
+        value: 1250.0,
+        netValue: 1192.89,
+        gatewayProfit: 12.99,
+        billingType: 'CREDIT_CARD',
+        installmentCount: 3,
+        status: 'RECEIVED',
+      },
+    },
+  },
+  {
+    id: 'wh-3',
+    event: 'PAYMENT_OVERDUE',
+    code: 'pay_19284729103',
+    detail: 'Boleto R$ 89,00',
+    timeAgo: 'Há 19 min',
+    latencyMs: 110,
+    status: 200,
+    payload: {
+      event: 'PAYMENT_OVERDUE',
+      payment: {
+        id: 'pay_19284729103',
+        value: 89.0,
+        billingType: 'BOLETO',
+        status: 'OVERDUE',
+      },
+    },
+  },
+  {
+    id: 'wh-4',
+    event: 'PAYMENT_RECEIVED',
+    code: 'pay_67281039401',
+    detail: 'Pix R$ 120,00',
+    timeAgo: 'Há 26 min',
+    latencyMs: 134,
+    status: 200,
+    payload: {
+      event: 'PAYMENT_RECEIVED',
+      payment: {
+        id: 'pay_67281039401',
+        value: 120.0,
+        billingType: 'PIX',
+        status: 'RECEIVED',
+      },
+    },
+  },
+  {
+    id: 'wh-5',
+    event: 'PAYMENT_REFUNDED',
+    code: 'pay_00192837492',
+    detail: 'Estorno R$ 75,00',
+    timeAgo: 'Há 41 min',
+    latencyMs: 221,
+    status: 200,
+    payload: {
+      event: 'PAYMENT_REFUNDED',
+      payment: {
+        id: 'pay_00192837492',
+        value: 75.0,
+        status: 'REFUNDED',
+      },
+    },
+  },
+];
 
 interface RatesAndIntegrationsViewProps {
   onShowToast: (msg: string) => void;
@@ -10,6 +122,12 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
   onShowToast,
   onOpenSimulator,
 }) => {
+  const { data: account } = useQuery({
+    queryKey: ['account'],
+    queryFn: () => api.getAccount(),
+    initialData: DEFAULT_ACCOUNT,
+  });
+
   const [environment, setEnvironment] = useState<'prod' | 'sandbox'>('prod');
   const [isTokenVisible, setIsTokenVisible] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
@@ -20,9 +138,9 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
   const [selectedLog, setSelectedLog] = useState<WebhookLog | null>(null);
 
   // Bank display
-  const pixKey = NEXTPAY_ACCOUNT.pixKey;
-  const bankAgency = NEXTPAY_ACCOUNT.agency;
-  const bankAccount = NEXTPAY_ACCOUNT.account;
+  const pixKey = account.pixKey || 'contato@nextpay.com.br';
+  const bankAgency = account.agency || '0001';
+  const bankAccount = account.account || '7342797-3';
 
   const prodToken = 'nextpay_live_7cf740b4a6f4d00d188a9736';
   const sandboxToken = 'nextpay_test_b9f0421199008e5061471bde';
@@ -169,7 +287,7 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
           <div className="text-right flex-shrink-0">
             <span className="text-[11px] text-outline block">Lucro Acumulado no Mês:</span>
             <span className="font-numeric-lg text-headline-sm font-bold text-secondary">
-              {NEXTPAY_ACCOUNT.gatewayProfitMonthFormatted}
+              R$ 4.860,25
             </span>
           </div>
         </div>
@@ -954,7 +1072,7 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                       </span>
                       <div className="flex flex-col">
                         <span className="font-label-md text-label-md font-semibold text-on-surface">
-                          Banco 461 - {NEXTPAY_ACCOUNT.bankName}
+                          Banco 461 - {account.bankName || 'NextPay Instituição de Pagamento S.A'}
                         </span>
                         <span className="font-label-sm text-label-sm text-on-surface-variant">
                           Agência: {bankAgency} • Conta: {bankAccount}
@@ -966,7 +1084,7 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                     </span>
                   </div>
                   <span className="font-body-sm text-body-sm text-on-surface-variant">
-                    Titular: {NEXTPAY_ACCOUNT.companyName}
+                    Titular: {account.name || 'NextPay Intermediação & Tecnologia LTDA'}
                   </span>
                 </div>
               </div>

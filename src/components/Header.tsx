@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { NEXTPAY_ACCOUNT } from '../data/mockData';
+import { useQuery } from '@tanstack/react-query';
+import { api, DEFAULT_ACCOUNT } from '../api/client';
 
 interface HeaderProps {
   onOpenNewCharge: () => void;
@@ -21,6 +22,12 @@ export const Header: React.FC<HeaderProps> = ({
   _onOpenSimulator?: HeaderProps['onOpenSimulator'];
   _onShowToast?: HeaderProps['onShowToast'];
 }) => {
+  const { data: account } = useQuery({
+    queryKey: ['account'],
+    queryFn: () => api.getAccount(),
+    initialData: DEFAULT_ACCOUNT,
+  });
+
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -206,10 +213,10 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div className="hidden lg:flex flex-col text-left">
               <span className="font-title-md text-[12px] text-on-surface font-semibold leading-tight">
-                {NEXTPAY_ACCOUNT.email}
+                {account.email}
               </span>
               <span className="font-label-sm text-[10px] text-on-surface-variant leading-tight">
-                Conta: {NEXTPAY_ACCOUNT.account}
+                Conta: {account.account}
               </span>
             </div>
             <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
@@ -221,13 +228,12 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="absolute top-full right-0 mt-2 w-60 bg-surface-container-lowest rounded-xl shadow-xl border border-surface-container p-2 z-50">
               <div className="p-2 border-b border-surface-container">
                 <p className="font-title-md text-[13px] font-semibold text-on-surface">
-                  {NEXTPAY_ACCOUNT.ownerName}
+                  {account.name}
                 </p>
-                <p className="font-body-sm text-[11px] text-on-surface-variant">
-                  {NEXTPAY_ACCOUNT.email}
-                </p>
+                <p className="font-body-sm text-[11px] text-on-surface-variant">{account.email}</p>
                 <p className="text-[10px] text-outline font-mono mt-1">
-                  Banco 461 • Ag 0001 • C/C 7342797-3
+                  Banco {account.bankCode || '461'} • Ag {account.agency || '0001'} • C/C{' '}
+                  {account.account || '7342797-3'}
                 </p>
               </div>
               <div className="py-1">

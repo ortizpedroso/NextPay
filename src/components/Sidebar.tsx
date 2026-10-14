@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { NEXTPAY_ACCOUNT } from '../data/mockData';
+import { useQuery } from '@tanstack/react-query';
+import { api, DEFAULT_ACCOUNT } from '../api/client';
 
 interface NavItem {
   id: string;
@@ -23,6 +24,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
   availableBalance,
 }) => {
+  const { data: account } = useQuery({
+    queryKey: ['account'],
+    queryFn: () => api.getAccount(),
+    initialData: DEFAULT_ACCOUNT,
+  });
   const [showBalance, setShowBalance] = useState(true);
 
   const mainNav: NavItem[] = [
@@ -217,24 +223,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-3 border-t border-surface-container bg-surface-container-low/70 flex-shrink-0">
           <div className="flex flex-col gap-1 text-[11px]">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-on-surface truncate">
-                {NEXTPAY_ACCOUNT.email}
-              </span>
+              <span className="font-semibold text-on-surface truncate">{account.email}</span>
               <span className="px-1.5 py-0.2 rounded bg-secondary-container text-on-secondary-container text-[9px] font-bold">
                 Verificado
               </span>
             </div>
             <div className="text-on-surface-variant text-[10px] leading-tight">
               <span>
-                Banco: <strong>{NEXTPAY_ACCOUNT.bankCode}</strong> - {NEXTPAY_ACCOUNT.bankName}
+                Banco: <strong>{account.bankCode || '461'}</strong> -{' '}
+                {account.bankName || 'NextPay I.P S.A'}
               </span>
             </div>
             <div className="flex items-center justify-between text-outline text-[10px]">
               <span>
-                Ag: <strong>{NEXTPAY_ACCOUNT.agency}</strong>
+                Ag: <strong>{account.agency || '0001'}</strong>
               </span>
               <span>
-                Conta: <strong>{NEXTPAY_ACCOUNT.account}</strong>
+                Conta: <strong>{account.account || '7342797-3'}</strong>
               </span>
             </div>
           </div>
