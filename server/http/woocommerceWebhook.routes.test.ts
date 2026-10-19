@@ -12,16 +12,7 @@ import {
   NoopOutboundWebhookService,
 } from '../createApp';
 import { InMemoryWebhookEventStore } from '../payments/webhookEventStore';
-import type { CredentialRepositoryPort } from './routes/adminCredentials.routes';
-
-function mockCredentialRepository(): CredentialRepositoryPort {
-  return {
-    upsertCredential: vi.fn(),
-    getMasked: vi.fn(),
-    decryptApiToken: vi.fn(async () => 'np_sec_sandbox_0123456789abcdef0123456789ab'),
-    markValidated: vi.fn(),
-  };
-}
+import { mockCredentialRepository } from './testHelpers/mockCredentialRepository';
 
 describe('WooCommerce inbound webhook stub', () => {
   const webhookSecret = 'webhook-secret-0123456789ab';

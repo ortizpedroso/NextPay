@@ -24,13 +24,15 @@ export function resolveInboundWebhookSecrets(env: NodeJS.ProcessEnv = process.en
 
 /**
  * Aceita `x-nextpay-webhook-token` (genérico) ou `asaas-access-token` (cabeçalho do painel Asaas).
+ * Segredos adicionais (ex.: vault por ambiente) podem ser passados em `extraSecrets`.
  */
 export function verifyInboundWebhookAuth(
   headers: IncomingHttpHeaders,
   env: NodeJS.ProcessEnv = process.env,
+  extraSecrets: string[] = [],
 ): boolean {
-  const allowed = resolveInboundWebhookSecrets(env);
-  if (allowed.length === 0) {
+  const allowed = new Set<string>([...resolveInboundWebhookSecrets(env), ...extraSecrets]);
+  if (allowed.size === 0) {
     return false;
   }
 
@@ -41,5 +43,5 @@ export function verifyInboundWebhookAuth(
     return false;
   }
 
-  return allowed.includes(provided);
+  return allowed.has(provided);
 }

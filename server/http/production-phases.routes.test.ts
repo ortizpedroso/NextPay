@@ -17,16 +17,7 @@ import { rotateMerchantApiKey } from '../merchant/merchantApiKeys';
 import { DEFAULT_MERCHANT_DB_ID } from '../merchant/merchantScope';
 import { resetWithdrawalStubStoreForTests } from '../payments/withdrawalStubStore';
 import { InMemoryWebhookEventStore } from '../payments/webhookEventStore';
-import type { CredentialRepositoryPort } from './routes/adminCredentials.routes';
-
-function mockCredentialRepository(): CredentialRepositoryPort {
-  return {
-    upsertCredential: vi.fn(),
-    getMasked: vi.fn(),
-    decryptApiToken: vi.fn(async () => 'np_sec_sandbox_0123456789abcdef0123456789ab'),
-    markValidated: vi.fn(),
-  };
-}
+import { mockCredentialRepository } from './testHelpers/mockCredentialRepository';
 
 describe('Production phases — merchant keys, jobs, hosted card, sandbox', () => {
   const adminToken = 'test-admin-token-0123456789';

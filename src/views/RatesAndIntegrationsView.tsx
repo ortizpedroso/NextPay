@@ -39,10 +39,16 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
   const [isTestingLatency, setIsTestingLatency] = useState(false);
   const [currentLatency, setCurrentLatency] = useState<number | null>(null);
   const [sessionTick, setSessionTick] = useState(0);
-  const [maskedProcessorToken, setMaskedProcessorToken] = useState('—');
+  const [maskedApiToken, setMaskedApiToken] = useState('—');
+  const [maskedWebhookToken, setMaskedWebhookToken] = useState('—');
+  const [maskedWalletId, setMaskedWalletId] = useState('—');
   const [credentialConfigured, setCredentialConfigured] = useState(false);
+  const [webhookConfigured, setWebhookConfigured] = useState(false);
+  const [walletConfigured, setWalletConfigured] = useState(false);
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
-  const [processorTokenDraft, setProcessorTokenDraft] = useState('');
+  const [apiTokenDraft, setApiTokenDraft] = useState('');
+  const [webhookTokenDraft, setWebhookTokenDraft] = useState('');
+  const [walletIdDraft, setWalletIdDraft] = useState('');
   const [isSavingCredential, setIsSavingCredential] = useState(false);
 
   // Webhook inspector
@@ -57,11 +63,17 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
   const bankAccount = NEXTPAY_ACCOUNT.account;
 
   const apiEnvironment = uiEnvironmentToApi(environment);
+  const asaasCopyLabel =
+    environment === 'sandbox' ? 'Copie do Asaas (Sandbox)' : 'Copie do Asaas (Produção)';
 
   const reloadCredential = useCallback(async () => {
     if (!getAdminBearerToken()) {
-      setMaskedProcessorToken('—');
+      setMaskedApiToken('—');
+      setMaskedWebhookToken('—');
+      setMaskedWalletId('—');
       setCredentialConfigured(false);
+      setWebhookConfigured(false);
+      setWalletConfigured(false);
       return;
     }
 
@@ -69,15 +81,27 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
     try {
       const data = await fetchMaskedCredential(apiEnvironment);
       if (!data) {
-        setMaskedProcessorToken('Não configurado');
+        setMaskedApiToken('Não configurado');
+        setMaskedWebhookToken('Não configurado');
+        setMaskedWalletId('Não configurado');
         setCredentialConfigured(false);
+        setWebhookConfigured(false);
+        setWalletConfigured(false);
       } else {
-        setMaskedProcessorToken(data.maskedToken);
-        setCredentialConfigured(true);
+        setMaskedApiToken(data.maskedApiToken ?? data.maskedToken);
+        setMaskedWebhookToken(data.maskedWebhookToken ?? 'Não configurado');
+        setMaskedWalletId(data.maskedWalletId ?? 'Não configurado');
+        setCredentialConfigured(data.configuredApi ?? data.configured);
+        setWebhookConfigured(data.configuredWebhook);
+        setWalletConfigured(data.configuredWallet);
       }
     } catch (error) {
-      setMaskedProcessorToken('Erro ao carregar');
+      setMaskedApiToken('Erro ao carregar');
+      setMaskedWebhookToken('Erro ao carregar');
+      setMaskedWalletId('Erro ao carregar');
       setCredentialConfigured(false);
+      setWebhookConfigured(false);
+      setWalletConfigured(false);
       onShowToast(error instanceof Error ? error.message : 'Erro ao carregar credencial.');
     } finally {
       setIsLoadingCredential(false);
@@ -196,10 +220,10 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
     }
   };
 
-  const handleCopyToken = () => {
-    navigator.clipboard.writeText(maskedProcessorToken);
+  const handleCopyMasked = (value: string, label: string) => {
+    navigator.clipboard.writeText(value);
     setCopiedToken(true);
-    onShowToast(`Referência mascarada (${environment.toUpperCase()}) copiada.`);
+    onShowToast(`${label} (${environment.toUpperCase()}) copiado (máscara).`);
     setTimeout(() => setCopiedToken(false), 2000);
   };
 
@@ -208,18 +232,58 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
       onShowToast('Configure a sessão administrativa primeiro.');
       return;
     }
-    if (processorTokenDraft.trim().length < 16) {
-      onShowToast('Informe a chave do processador (mín. 16 caracteres).');
+
+    const payload: {
+      apiAccessToken?: string;
+      webhookToken?: string;
+      walletId?: string;
+    } = {};
+
+    if (apiTokenDraft.trim()) {
+      if (apiTokenDraft.trim().length < 16) {
+        onShowToast('Chave API: mínimo de 16 caracteres.');
+        return;
+      }
+      payload.apiAccessToken = apiTokenDraft.trim();
+    }
+    if (webhookTokenDraft.trim()) {
+      if (webhookTokenDraft.trim().length < 8) {
+        onShowToast('Token webhook: mínimo de 8 caracteres.');
+        return;
+      }
+      payload.webhookToken = webhookTokenDraft.trim();
+    }
+    if (walletIdDraft.trim()) {
+      payload.walletId = walletIdDraft.trim();
+    }
+
+    if (
+      payload.apiAccessToken === undefined &&
+      payload.webhookToken === undefined &&
+      payload.walletId === undefined
+    ) {
+      onShowToast('Preencha ao menos um campo para salvar no vault.');
+      return;
+    }
+
+    if (!credentialConfigured && !payload.apiAccessToken) {
+      onShowToast('Na primeira configuração, informe a Chave API (mín. 16 caracteres).');
       return;
     }
 
     setIsSavingCredential(true);
     try {
-      const saved = await upsertProcessorCredential(apiEnvironment, processorTokenDraft.trim());
-      setMaskedProcessorToken(saved.maskedToken);
-      setCredentialConfigured(true);
-      setProcessorTokenDraft('');
-      onShowToast(`Credencial ${saved.environment} salva com sucesso.`);
+      const saved = await upsertProcessorCredential(apiEnvironment, payload);
+      setMaskedApiToken(saved.maskedApiToken ?? saved.maskedToken);
+      setMaskedWebhookToken(saved.maskedWebhookToken ?? 'Não configurado');
+      setMaskedWalletId(saved.maskedWalletId ?? 'Não configurado');
+      setCredentialConfigured(saved.configuredApi ?? saved.configured);
+      setWebhookConfigured(saved.configuredWebhook);
+      setWalletConfigured(saved.configuredWallet);
+      setApiTokenDraft('');
+      setWebhookTokenDraft('');
+      setWalletIdDraft('');
+      onShowToast(`Credenciais ${saved.environment} salvas no vault.`);
     } catch (error) {
       onShowToast(error instanceof Error ? error.message : 'Falha ao salvar credencial.');
     } finally {
@@ -1215,78 +1279,122 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                   </span>
                   <div>
                     <h3 className="font-title-md text-title-md text-on-surface font-bold">
-                      API & Credenciais NextPay
+                      Credenciais do processador (Vault)
                     </h3>
                     <p className="font-body-sm text-body-sm text-on-surface-variant">
-                      Conexão REST v3 API NextPay
+                      {asaasCopyLabel} — Integrações → API, Webhooks e Carteiras
                     </p>
                   </div>
                 </div>
                 <span className="font-label-sm text-label-sm px-2 py-0.5 rounded bg-primary-fixed text-on-primary-fixed-variant font-semibold">
-                  {environment.toUpperCase()}
+                  {environment === 'sandbox' ? 'SANDBOX' : 'PRODUÇÃO'}
                 </span>
               </div>
 
-              {/* Secret Token */}
-              <div className="flex flex-col gap-space-xs">
-                <label className="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">
-                  Credencial do processador (exibição mascarada)
-                </label>
-                <div className="flex items-center bg-surface-container-low rounded-lg p-1.5 border border-surface-container">
-                  <input
-                    type={isTokenVisible ? 'text' : 'password'}
-                    readOnly
-                    value={isLoadingCredential ? 'Carregando...' : maskedProcessorToken}
-                    className="w-full bg-transparent font-mono text-body-sm text-on-surface px-space-sm focus:outline-none select-all"
-                  />
-                  <div className="flex items-center gap-1 shrink-0">
+              <p className="text-xs text-on-surface-variant bg-surface-container-low rounded-lg p-3 border border-surface-container/60">
+                Use o mesmo token webhook no painel do processador e aqui (ou configure{' '}
+                <code className="font-mono text-[11px]">WEBHOOK_INBOUND_SECRET</code> no servidor
+                como fallback global). Carteira de split é salva por ambiente;{' '}
+                <code className="font-mono text-[11px]">NEXTPAY_WALLET_ID</code> no .env continua
+                como fallback.
+              </p>
+
+              {(
+                [
+                  {
+                    id: 'api',
+                    label: 'Chave API / access token',
+                    masked: maskedApiToken,
+                    configured: credentialConfigured,
+                  },
+                  {
+                    id: 'webhook',
+                    label: 'Token webhook (autenticação inbound)',
+                    masked: maskedWebhookToken,
+                    configured: webhookConfigured,
+                  },
+                  {
+                    id: 'wallet',
+                    label: 'Wallet ID (carteira split)',
+                    masked: maskedWalletId,
+                    configured: walletConfigured,
+                  },
+                ] as const
+              ).map((field) => (
+                <div key={field.id} className="flex flex-col gap-space-xs">
+                  <label className="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">
+                    {field.label}
+                  </label>
+                  <div className="flex items-center bg-surface-container-low rounded-lg p-1.5 border border-surface-container">
+                    <input
+                      type={isTokenVisible ? 'text' : 'password'}
+                      readOnly
+                      value={isLoadingCredential ? 'Carregando...' : field.masked}
+                      className="w-full bg-transparent font-mono text-body-sm text-on-surface px-space-sm focus:outline-none select-all"
+                    />
                     <button
                       type="button"
-                      onClick={() => setIsTokenVisible(!isTokenVisible)}
-                      className="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors"
-                      title={isTokenVisible ? 'Ocultar Chave' : 'Exibir Chave'}
-                    >
-                      <span className="material-symbols-outlined text-[18px]">
-                        {isTokenVisible ? 'visibility_off' : 'visibility'}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCopyToken}
-                      className="p-1.5 bg-primary text-on-primary hover:bg-primary-container rounded transition-colors flex items-center gap-1 px-2.5 font-semibold text-xs"
-                      title="Copiar Token"
+                      onClick={() => handleCopyMasked(field.masked, field.label)}
+                      className="p-1.5 bg-primary text-on-primary hover:bg-primary-container rounded transition-colors flex items-center gap-1 px-2.5 font-semibold text-xs shrink-0"
+                      title="Copiar máscara"
                     >
                       <span className="material-symbols-outlined text-[16px]">
                         {copiedToken ? 'check' : 'content_copy'}
                       </span>
-                      <span>{copiedToken ? 'Copiado!' : 'Copiar'}</span>
                     </button>
                   </div>
+                  <span className="font-label-sm text-label-sm text-on-surface-variant">
+                    Status:{' '}
+                    <strong className={field.configured ? 'text-secondary' : 'text-outline'}>
+                      {field.configured ? 'Configurado' : 'Pendente'}
+                    </strong>
+                  </span>
                 </div>
+              ))}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsTokenVisible(!isTokenVisible)}
+                  className="text-xs font-semibold text-primary flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {isTokenVisible ? 'visibility_off' : 'visibility'}
+                  </span>
+                  {isTokenVisible ? 'Ocultar máscaras' : 'Exibir máscaras'}
+                </button>
                 <span className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
                   <span className="material-symbols-outlined text-[14px] text-outline">lock</span>
-                  Apenas referência mascarada — o segredo completo nunca é retornado pela API.
-                </span>
-                <span className="font-label-sm text-label-sm text-on-surface-variant">
-                  Status:{' '}
-                  <strong className={credentialConfigured ? 'text-secondary' : 'text-outline'}>
-                    {credentialConfigured ? 'Configurado' : 'Pendente'}
-                  </strong>
+                  Segredos completos nunca saem do vault.
                 </span>
               </div>
 
-              <div className="flex flex-col gap-space-xs pt-space-xs border-t border-surface-container">
+              <div className="flex flex-col gap-space-sm pt-space-xs border-t border-surface-container">
                 <label className="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">
-                  Atualizar credencial do processador
+                  Colar novos valores — {asaasCopyLabel}
                 </label>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="password"
-                    value={processorTokenDraft}
-                    onChange={(e) => setProcessorTokenDraft(e.target.value)}
-                    placeholder="Cole a chave de API do processador (servidor)"
-                    className="flex-1 px-space-sm py-2 rounded-lg border border-surface-container bg-surface-container-low text-body-sm font-mono"
-                  />
+                <input
+                  type="password"
+                  value={apiTokenDraft}
+                  onChange={(e) => setApiTokenDraft(e.target.value)}
+                  placeholder="Chave API / access token"
+                  className="w-full px-space-sm py-2 rounded-lg border border-surface-container bg-surface-container-low text-body-sm font-mono"
+                />
+                <input
+                  type="password"
+                  value={webhookTokenDraft}
+                  onChange={(e) => setWebhookTokenDraft(e.target.value)}
+                  placeholder="Token webhook (mesmo valor no painel + aqui)"
+                  className="w-full px-space-sm py-2 rounded-lg border border-surface-container bg-surface-container-low text-body-sm font-mono"
+                />
+                <input
+                  type="password"
+                  value={walletIdDraft}
+                  onChange={(e) => setWalletIdDraft(e.target.value)}
+                  placeholder="Wallet ID da carteira para split de comissão"
+                  className="w-full px-space-sm py-2 rounded-lg border border-surface-container bg-surface-container-low text-body-sm font-mono"
+                />
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => void handleSaveProcessorCredential()}
@@ -1294,6 +1402,14 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                     className="px-space-md py-2 rounded-lg bg-secondary text-on-secondary font-semibold text-body-sm disabled:opacity-50"
                   >
                     {isSavingCredential ? 'Salvando...' : 'Salvar no Vault'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleTestLatency()}
+                    disabled={isTestingLatency}
+                    className="px-space-md py-2 rounded-lg bg-primary text-on-primary font-semibold text-body-sm disabled:opacity-50"
+                  >
+                    {isTestingLatency ? 'Testando...' : 'Testar conectividade API'}
                   </button>
                 </div>
               </div>

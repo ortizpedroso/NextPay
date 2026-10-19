@@ -29,6 +29,16 @@ describe('webhookInboundAuth', () => {
     expect(verifyInboundWebhookAuth({ 'asaas-access-token': 'wrong' }, env)).toBe(false);
   });
 
+  it('aceita segredos extras do vault', () => {
+    expect(
+      verifyInboundWebhookAuth(
+        { 'asaas-access-token': 'from-vault-only' },
+        {},
+        ['from-vault-only'],
+      ),
+    ).toBe(true);
+  });
+
   it('unifica WEBHOOK_INBOUND_SECRET e ASAAS_WEBHOOK_TOKEN', () => {
     const env = {
       WEBHOOK_INBOUND_SECRET: 'primary',

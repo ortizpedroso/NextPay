@@ -10,6 +10,8 @@ import type { PaymentGatewayResolver } from './payments.routes';
 import type { CatalogProductStore } from './products.routes';
 import type { PaymentLinkStore } from './paymentLinks.routes';
 import { resolveInboundWebhookSecrets, verifyInboundWebhookAuth } from '../webhookInboundAuth';
+import type { CredentialRepositoryPort } from './adminCredentials.routes';
+import { resolveInboundWebhookSecretsWithVault } from '../../vault/inboundWebhookSecrets';
 
 const CONFIRMED_STATUSES = new Set(['RECEIVED', 'CONFIRMED']);
 
@@ -22,19 +24,23 @@ export function createWebhooksRouter(
   outboundWebhookService?: OutboundWebhookService,
   paymentLinkStore?: PaymentLinkStore,
   catalogProductStore?: CatalogProductStore,
+  credentialRepository?: Pick<CredentialRepositoryPort, 'decryptCredential'>,
 ): Router {
   const router = Router();
 
   router.post('/inbound', async (req, res, next) => {
     try {
-      if (resolveInboundWebhookSecrets().length === 0) {
+      const inboundSecrets = credentialRepository
+        ? await resolveInboundWebhookSecretsWithVault(credentialRepository)
+        : resolveInboundWebhookSecrets();
+      if (inboundSecrets.length === 0) {
         res
           .status(503)
           .json({ error: 'Webhook inbound não configurado.', code: 'WEBHOOK_DISABLED' });
         return;
       }
 
-      if (!verifyInboundWebhookAuth(req.headers)) {
+      if (!verifyInboundWebhookAuth(req.headers, process.env, inboundSecrets)) {
         res.status(401).json({ error: 'Não autorizado.', code: 'UNAUTHORIZED' });
         return;
       }
@@ -105,14 +111,17 @@ export function createWebhooksRouter(
 
   router.post('/inbound/woocommerce', async (req, res, next) => {
     try {
-      if (resolveInboundWebhookSecrets().length === 0) {
+      const inboundSecrets = credentialRepository
+        ? await resolveInboundWebhookSecretsWithVault(credentialRepository)
+        : resolveInboundWebhookSecrets();
+      if (inboundSecrets.length === 0) {
         res
           .status(503)
           .json({ error: 'Webhook inbound não configurado.', code: 'WEBHOOK_DISABLED' });
         return;
       }
 
-      if (!verifyInboundWebhookAuth(req.headers)) {
+      if (!verifyInboundWebhookAuth(req.headers, process.env, inboundSecrets)) {
         res.status(401).json({ error: 'Não autorizado.', code: 'UNAUTHORIZED' });
         return;
       }

@@ -238,6 +238,7 @@ export function createApp(options: CreateAppOptions = {}) {
       outboundWebhookService,
       paymentLinkStore,
       catalogProductStore,
+      credentialRepository,
     ),
   );
 

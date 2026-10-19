@@ -13,6 +13,7 @@ describe('createPaymentGatewayForEnvironment', () => {
     process.env.PAYMENT_GATEWAY_MODE = 'fixture';
     const gateway = await createPaymentGatewayForEnvironment('SANDBOX', {
       decryptApiToken: vi.fn(async () => 'np_sec_live_real_key_0123456789ab'),
+      decryptCredential: vi.fn(async () => null),
     });
     expect(gateway).toBeInstanceOf(InMemoryPaymentGateway);
   });
@@ -20,6 +21,7 @@ describe('createPaymentGatewayForEnvironment', () => {
   it('usa adaptador em memória para tokens np_sec_test_', async () => {
     const gateway = await createPaymentGatewayForEnvironment('SANDBOX', {
       decryptApiToken: vi.fn(async () => 'np_sec_test_0123456789abcdef0123456789ab'),
+      decryptCredential: vi.fn(async () => null),
     });
     expect(gateway).toBeInstanceOf(InMemoryPaymentGateway);
   });
@@ -27,6 +29,7 @@ describe('createPaymentGatewayForEnvironment', () => {
   it('instancia adaptador primário para tokens reais', async () => {
     const gateway = await createPaymentGatewayForEnvironment('SANDBOX', {
       decryptApiToken: vi.fn(async () => 'np_sec_sandbox_0123456789abcdef0123456789ab'),
+      decryptCredential: vi.fn(async () => null),
     });
     expect(gateway).toBeInstanceOf(PrimaryProcessorGatewayAdapter);
   });

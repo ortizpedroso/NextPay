@@ -9,7 +9,10 @@ import type { PaymentGatewayInterface } from './payment-gateway.interface';
 
 export async function createPaymentGatewayForEnvironment(
   environment: VaultEnvironment,
-  credentialRepository: Pick<PrismaProcessorCredentialRepository, 'decryptApiToken'>,
+  credentialRepository: Pick<
+    PrismaProcessorCredentialRepository,
+    'decryptApiToken' | 'decryptCredential'
+  >,
   correlationStore: CorrelationStore = new PrismaCorrelationStore(prisma),
 ): Promise<PaymentGatewayInterface> {
   const mode = process.env.PAYMENT_GATEWAY_MODE?.trim().toLowerCase();
@@ -22,5 +25,13 @@ export async function createPaymentGatewayForEnvironment(
     return new InMemoryPaymentGateway(environment);
   }
 
-  return PrimaryProcessorGatewayAdapter.create(environment, accessToken, correlationStore);
+  const credential = await credentialRepository.decryptCredential(environment);
+  const splitWalletId = credential?.walletId?.trim() || process.env.NEXTPAY_WALLET_ID?.trim();
+
+  return PrimaryProcessorGatewayAdapter.create(
+    environment,
+    accessToken,
+    correlationStore,
+    splitWalletId,
+  );
 }

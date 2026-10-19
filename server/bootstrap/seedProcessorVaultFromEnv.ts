@@ -39,11 +39,19 @@ export async function seedProcessorVaultFromEnvIfNeeded(
   const vault = ProcessorCredentialVaultService.fromEnvironment(env);
   const repository = new PrismaProcessorCredentialRepository(prisma, vault);
 
-  const existing = await repository.getMasked(environment);
+  const existing = await repository.getAdminMaskedView(environment);
   if (existing) {
     return { status: 'skipped', reason: 'already_configured' };
   }
 
-  await repository.upsertCredential(environment, apiKey);
+  const webhookToken =
+    env.WEBHOOK_INBOUND_SECRET?.trim() || env.ASAAS_WEBHOOK_TOKEN?.trim() || undefined;
+  const walletId = env.NEXTPAY_WALLET_ID?.trim() || undefined;
+
+  await repository.upsertCredential(environment, {
+    apiAccessToken: apiKey,
+    webhookToken,
+    walletId,
+  });
   return { status: 'seeded', environment };
 }

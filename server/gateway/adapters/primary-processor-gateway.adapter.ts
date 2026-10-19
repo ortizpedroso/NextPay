@@ -31,6 +31,7 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
     environment: 'SANDBOX' | 'PRODUCTION',
     private readonly http: ProcessorPrimaryHttpClient,
     private readonly correlationStore?: CorrelationStore,
+    private readonly defaultSplitWalletId?: string,
   ) {
     this.environment = environment;
   }
@@ -39,13 +40,19 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
     environment: 'SANDBOX' | 'PRODUCTION',
     accessToken: string,
     correlationStore?: CorrelationStore,
+    defaultSplitWalletId?: string,
   ): PrimaryProcessorGatewayAdapter {
     const http = new ProcessorPrimaryHttpClient({
       baseUrl: resolveProcessorBaseUrl(environment),
       accessToken,
       timeoutMs: 15_000,
     });
-    return new PrimaryProcessorGatewayAdapter(environment, http, correlationStore);
+    return new PrimaryProcessorGatewayAdapter(
+      environment,
+      http,
+      correlationStore,
+      defaultSplitWalletId,
+    );
   }
 
   async testConnectivity(): Promise<GatewayConnectivityResult> {
@@ -103,7 +110,7 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
     };
 
     const split = resolveProcessorSplit({
-      splitWalletId: parsed.splitWalletId,
+      splitWalletId: parsed.splitWalletId ?? this.defaultSplitWalletId,
       amountCents: parsed.amountCents,
     });
     if (split) {
