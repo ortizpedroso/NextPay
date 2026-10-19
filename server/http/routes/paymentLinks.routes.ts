@@ -2,6 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import { buildCheckoutUrl, newPaymentLinkPublicId, slugifyTitle } from '../../catalog/catalogIds';
+import type { DashboardRequest } from '../../merchant/merchantScope';
+import {
+  resolveMerchantDbIdForRead,
+  resolveMerchantDbIdForWrite,
+} from '../../merchant/merchantScope';
 
 const billingTypeSchema = z.enum(['avulsa', 'recorrente']);
 const linkStatusSchema = z.enum(['ACTIVE', 'PAUSED']);
@@ -23,20 +28,23 @@ export type PaymentLinkRecord = {
 };
 
 export interface PaymentLinkStore {
-  list(): Promise<PaymentLinkRecord[]>;
+  list(merchantDbId?: string): Promise<PaymentLinkRecord[]>;
   getByPublicId(linkPublicId: string): Promise<PaymentLinkRecord | null>;
   getBySlugOrPublicId(slugOrId: string): Promise<PaymentLinkRecord | null>;
   recordConfirmedSale(linkPublicId: string, amountCents: number): Promise<void>;
-  create(input: {
-    linkPublicId: string;
-    urlSlug: string;
-    title: string;
-    subtitle: string;
-    billingType: z.infer<typeof billingTypeSchema>;
-    amountCents: number;
-    expiresAt?: Date | null;
-    productPublicId?: string | null;
-  }): Promise<PaymentLinkRecord>;
+  create(
+    input: {
+      linkPublicId: string;
+      urlSlug: string;
+      title: string;
+      subtitle: string;
+      billingType: z.infer<typeof billingTypeSchema>;
+      amountCents: number;
+      expiresAt?: Date | null;
+      productPublicId?: string | null;
+    },
+    merchantDbId: string,
+  ): Promise<PaymentLinkRecord>;
   update(
     linkPublicId: string,
     patch: Partial<
@@ -50,10 +58,12 @@ export interface PaymentLinkStore {
 }
 
 export class InMemoryPaymentLinkStore implements PaymentLinkStore {
-  private readonly rows = new Map<string, PaymentLinkRecord>();
+  private readonly rows = new Map<string, PaymentLinkRecord & { merchantDbId?: string }>();
 
-  async list(): Promise<PaymentLinkRecord[]> {
-    return [...this.rows.values()];
+  async list(merchantDbId?: string): Promise<PaymentLinkRecord[]> {
+    return [...this.rows.values()].filter(
+      (row) => !merchantDbId || !row.merchantDbId || row.merchantDbId === merchantDbId,
+    );
   }
 
   async getByPublicId(linkPublicId: string): Promise<PaymentLinkRecord | null> {
@@ -81,17 +91,20 @@ export class InMemoryPaymentLinkStore implements PaymentLinkStore {
     }
   }
 
-  async create(input: {
-    linkPublicId: string;
-    urlSlug: string;
-    title: string;
-    subtitle: string;
-    billingType: z.infer<typeof billingTypeSchema>;
-    amountCents: number;
-    expiresAt?: Date | null;
-    productPublicId?: string | null;
-  }): Promise<PaymentLinkRecord> {
-    const record: PaymentLinkRecord = {
+  async create(
+    input: {
+      linkPublicId: string;
+      urlSlug: string;
+      title: string;
+      subtitle: string;
+      billingType: z.infer<typeof billingTypeSchema>;
+      amountCents: number;
+      expiresAt?: Date | null;
+      productPublicId?: string | null;
+    },
+    merchantDbId: string,
+  ): Promise<PaymentLinkRecord> {
+    const record: PaymentLinkRecord & { merchantDbId?: string } = {
       linkPublicId: input.linkPublicId,
       urlSlug: input.urlSlug,
       title: input.title,
@@ -105,6 +118,7 @@ export class InMemoryPaymentLinkStore implements PaymentLinkStore {
       expiresAt: input.expiresAt ? input.expiresAt.toISOString() : null,
       productPublicId: input.productPublicId ?? null,
       checkoutUrl: buildCheckoutUrl(input.urlSlug),
+      merchantDbId,
     };
     this.rows.set(record.linkPublicId, record);
     return record;
@@ -164,9 +178,10 @@ const updateLinkSchema = z.object({
 export function createPaymentLinksRouter(linkStore: PaymentLinkStore): Router {
   const router = Router();
 
-  router.get('/', async (_req, res, next) => {
+  router.get('/', async (req, res, next) => {
     try {
-      const paymentLinks = await linkStore.list();
+      const merchantDbId = await resolveMerchantDbIdForRead(req as DashboardRequest);
+      const paymentLinks = await linkStore.list(merchantDbId);
       res.json({ paymentLinks });
     } catch (error) {
       next(error);
@@ -199,16 +214,20 @@ export function createPaymentLinksRouter(linkStore: PaymentLinkStore): Router {
           ? 'Assinatura recorrente via Pix e Cartão'
           : 'Pagamento único via Pix e Cartão');
 
-      const paymentLink = await linkStore.create({
-        linkPublicId,
-        urlSlug,
-        title: body.title.trim(),
-        subtitle,
-        billingType: body.billingType,
-        amountCents: body.amountCents,
-        expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
-        productPublicId: body.productPublicId ?? null,
-      });
+      const merchantDbId = await resolveMerchantDbIdForWrite(req as DashboardRequest);
+      const paymentLink = await linkStore.create(
+        {
+          linkPublicId,
+          urlSlug,
+          title: body.title.trim(),
+          subtitle,
+          billingType: body.billingType,
+          amountCents: body.amountCents,
+          expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
+          productPublicId: body.productPublicId ?? null,
+        },
+        merchantDbId,
+      );
 
       res.status(201).json({ paymentLink });
     } catch (error) {

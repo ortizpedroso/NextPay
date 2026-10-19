@@ -8,8 +8,9 @@ import type {
 export class PrismaMerchantCustomerStore implements MerchantCustomerStore {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async list(): Promise<MerchantCustomerRecord[]> {
+  async list(merchantDbId?: string): Promise<MerchantCustomerRecord[]> {
     const rows = await this.prisma.merchantCustomer.findMany({
+      where: merchantDbId ? { merchantId: merchantDbId } : undefined,
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
@@ -21,11 +22,11 @@ export class PrismaMerchantCustomerStore implements MerchantCustomerStore {
     }));
   }
 
-  async save(record: MerchantCustomerRecord): Promise<void> {
+  async save(record: MerchantCustomerRecord, merchantDbId: string): Promise<void> {
     await this.prisma.merchantCustomer.upsert({
       where: { neutralCustomerId: record.neutralCustomerId },
-      create: record,
-      update: record,
+      create: { ...record, merchantId: merchantDbId },
+      update: { ...record, merchantId: merchantDbId },
     });
   }
 }

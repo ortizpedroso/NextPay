@@ -71,9 +71,12 @@ function mapLink(row: {
 export class PrismaCatalogProductStore implements CatalogProductStore {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async list(includeArchived = false): Promise<CatalogProductRecord[]> {
+  async list(includeArchived = false, merchantDbId?: string): Promise<CatalogProductRecord[]> {
     const rows = await this.prisma.catalogProduct.findMany({
-      where: includeArchived ? undefined : { status: 'ACTIVE' },
+      where: {
+        ...(merchantDbId ? { merchantId: merchantDbId } : {}),
+        ...(includeArchived ? {} : { status: 'ACTIVE' }),
+      },
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
@@ -112,9 +115,11 @@ export class PrismaCatalogProductStore implements CatalogProductStore {
       productPublicId: string;
       urlSlug: string;
     },
+    merchantDbId: string,
   ): Promise<CatalogProductRecord> {
     const row = await this.prisma.catalogProduct.create({
       data: {
+        merchantId: merchantDbId,
         productPublicId: input.productPublicId,
         urlSlug: input.urlSlug,
         title: input.title,
@@ -164,8 +169,9 @@ export class PrismaCatalogProductStore implements CatalogProductStore {
 export class PrismaPaymentLinkStore implements PaymentLinkStore {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async list(): Promise<PaymentLinkRecord[]> {
+  async list(merchantDbId?: string): Promise<PaymentLinkRecord[]> {
     const rows = await this.prisma.paymentLink.findMany({
+      where: merchantDbId ? { merchantId: merchantDbId } : undefined,
       orderBy: { createdAt: 'desc' },
       take: 200,
     });
@@ -202,18 +208,22 @@ export class PrismaPaymentLinkStore implements PaymentLinkStore {
     });
   }
 
-  async create(input: {
-    linkPublicId: string;
-    urlSlug: string;
-    title: string;
-    subtitle: string;
-    billingType: PaymentLinkRecord['billingType'];
-    amountCents: number;
-    expiresAt?: Date | null;
-    productPublicId?: string | null;
-  }): Promise<PaymentLinkRecord> {
+  async create(
+    input: {
+      linkPublicId: string;
+      urlSlug: string;
+      title: string;
+      subtitle: string;
+      billingType: PaymentLinkRecord['billingType'];
+      amountCents: number;
+      expiresAt?: Date | null;
+      productPublicId?: string | null;
+    },
+    merchantDbId: string,
+  ): Promise<PaymentLinkRecord> {
     const row = await this.prisma.paymentLink.create({
       data: {
+        merchantId: merchantDbId,
         linkPublicId: input.linkPublicId,
         urlSlug: input.urlSlug,
         title: input.title,

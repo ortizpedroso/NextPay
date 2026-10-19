@@ -2,6 +2,7 @@ import { GatewayEnvironment, PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 
 export type CheckoutSessionRecord = {
+  merchantId?: string;
   sessionPublicId: string;
   amountCents: number;
   description: string;
@@ -64,10 +65,27 @@ export class PrismaCheckoutSessionStore implements CheckoutSessionStore {
   constructor(private readonly prisma: PrismaClient) {}
 
   async create(record: CheckoutSessionRecord): Promise<CheckoutSessionRecord> {
+    const { getDefaultMerchantDbId } = await import('../merchant/merchantScope');
+    const merchantId = record.merchantId ?? (await getDefaultMerchantDbId());
     await this.prisma.checkoutSession.create({
-      data: record,
+      data: {
+        merchantId,
+        sessionPublicId: record.sessionPublicId,
+        amountCents: record.amountCents,
+        description: record.description,
+        method: record.method,
+        status: record.status,
+        paymentId: record.paymentId ?? null,
+        pixCopyPaste: record.pixCopyPaste ?? null,
+        customerName: record.customerName,
+        customerEmail: record.customerEmail,
+        customerDocument: record.customerDocument,
+        paymentLinkPublicId: record.paymentLinkPublicId ?? null,
+        productPublicId: record.productPublicId ?? null,
+        environment: record.environment,
+      },
     });
-    return record;
+    return { ...record, merchantId };
   }
 
   async getByPublicId(sessionPublicId: string): Promise<CheckoutSessionRecord | null> {

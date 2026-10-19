@@ -67,17 +67,23 @@ export function createWebhooksRouter(
       });
 
       if (normalized.paymentId && normalized.status) {
+        const existingSession = await checkoutStore?.getByPaymentId(normalized.paymentId);
         await checkoutStore?.updateByPaymentId(normalized.paymentId, normalized.status);
-        await ledgerStore?.upsert({
-          neutralPaymentId: normalized.paymentId,
-          amountCents: normalized.amountCents ?? 0,
-          status: normalized.status,
-          method: 'PIX',
-          description: 'Atualização via webhook inbound',
-        });
+        await ledgerStore?.upsert(
+          {
+            neutralPaymentId: normalized.paymentId,
+            amountCents: normalized.amountCents ?? existingSession?.amountCents ?? 0,
+            status: normalized.status,
+            method: 'PIX',
+            description: 'Atualização via webhook inbound',
+          },
+          existingSession?.merchantId,
+        );
 
         if (CONFIRMED_STATUSES.has(normalized.status)) {
-          const session = await checkoutStore?.getByPaymentId(normalized.paymentId);
+          const session =
+            existingSession ??
+            (await checkoutStore?.getByPaymentId(normalized.paymentId));
           const amountCents = normalized.amountCents ?? session?.amountCents ?? 0;
           if (session?.paymentLinkPublicId && amountCents > 0) {
             await paymentLinkStore?.recordConfirmedSale(session.paymentLinkPublicId, amountCents);

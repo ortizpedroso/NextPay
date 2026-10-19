@@ -7,6 +7,7 @@ import {
   type CheckoutSessionStore,
   newCheckoutPublicId,
 } from '../../checkout/checkoutSessionStore';
+import { resolveCheckoutMerchantDbId } from '../../merchant/resolveCheckoutMerchant';
 import type { LedgerStore } from '../../payments/ledgerStore';
 
 const createSessionSchema = z.object({
@@ -49,8 +50,14 @@ export function createPublicCheckoutRouter(
         idempotencyKey: `pay-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       });
 
+      const merchantId = await resolveCheckoutMerchantDbId({
+        paymentLinkPublicId: parsed.paymentLinkPublicId,
+        productPublicId: parsed.productPublicId,
+      });
+
       const sessionPublicId = newCheckoutPublicId();
       const session = await checkoutStore.create({
+        merchantId,
         sessionPublicId,
         amountCents: parsed.amountCents,
         description: parsed.description,
@@ -66,15 +73,18 @@ export function createPublicCheckoutRouter(
         environment: parsed.environment,
       });
 
-      await ledgerStore.upsert({
-        neutralPaymentId: payment.paymentId,
-        amountCents: payment.amountCents,
-        netAmountCents: payment.netAmountCents,
-        status: payment.status,
-        method: payment.method,
-        description: payment.description,
-        customerName: parsed.customer.name,
-      });
+      await ledgerStore.upsert(
+        {
+          neutralPaymentId: payment.paymentId,
+          amountCents: payment.amountCents,
+          netAmountCents: payment.netAmountCents,
+          status: payment.status,
+          method: payment.method,
+          description: payment.description,
+          customerName: parsed.customer.name,
+        },
+        merchantId,
+      );
 
       res.status(201).json({
         session: {
