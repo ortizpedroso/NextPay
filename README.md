@@ -67,18 +67,21 @@ npm run build
 
 As seguintes variáveis de ambiente são utilizadas pelo NextPay:
 
-| Variável              | Descrição                                                               |
-| :-------------------- | :---------------------------------------------------------------------- |
-| `PORT`                | Porta onde o servidor Express escuta conexões (padrão: 3000)            |
-| `APP_URL`             | URL base pública da aplicação                                           |
-| `DATABASE_URL`        | String de conexão com o banco de dados PostgreSQL principal             |
-| `DATABASE_URL_TEST`   | String de conexão com o banco PostgreSQL exclusivo para testes          |
-| `ASAAS_API_KEY`       | Chave de API da conta raiz NextPay no Asaas (somente servidor)          |
-| `ASAAS_ENV`           | Ambiente do Asaas (`sandbox` ou `production`)                           |
-| `ASAAS_WEBHOOK_TOKEN` | Token de validação de autenticidade dos webhooks do Asaas               |
-| `JWT_SECRET`          | Chave secreta para assinatura de tokens JWT                             |
-| `ENCRYPTION_KEY`      | Chave de criptografia simétrica para chaves de API das subcontas        |
-| `NEXTPAY_WALLET_ID`   | Identificador da carteira da conta raiz NextPay para split de comissões |
+| Variável                  | Descrição                                                                |
+| :------------------------ | :----------------------------------------------------------------------- |
+| `PORT`                    | Porta onde o servidor Express escuta conexões (padrão: 3000)             |
+| `APP_URL`                 | URL base pública da aplicação                                            |
+| `DATABASE_URL`            | String de conexão com o banco de dados PostgreSQL principal              |
+| `DATABASE_URL_TEST`       | String de conexão com o banco PostgreSQL exclusivo para testes           |
+| `ASAAS_API_KEY`           | Chave de API da conta raiz NextPay no Asaas (somente servidor)           |
+| `ASAAS_ENV`               | Ambiente do Asaas (`sandbox` ou `production`)                            |
+| `ASAAS_WEBHOOK_TOKEN`     | Token de validação de autenticidade dos webhooks do Asaas                |
+| `JWT_SECRET`              | Chave secreta para assinatura de tokens JWT (sessão do lojista)          |
+| `MERCHANT_LOGIN_EMAIL`    | E-mail do lojista para login JWT no painel                               |
+| `MERCHANT_LOGIN_PASSWORD` | Senha do lojista (somente servidor)                                      |
+| `PAYMENT_GATEWAY_MODE`    | `fixture` / `in_memory` força adaptador simulado (sem processadora real) |
+| `ENCRYPTION_KEY`          | Chave de criptografia simétrica para chaves de API das subcontas         |
+| `NEXTPAY_WALLET_ID`       | Identificador da carteira da conta raiz NextPay para split de comissões  |
 
 > **Nota de Segurança**: Chaves de API e segredos só existem no servidor e são lidos via `process.env`. Nenhuma credencial é exposta ao navegador.
 

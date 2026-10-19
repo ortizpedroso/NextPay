@@ -36,7 +36,9 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   });
 
   const handleCopyLink = (product: ProductItem) => {
-    const url = `https://nextpay.link/silva-design/${product.id}`;
+    const url =
+      product.checkoutUrl ??
+      `https://nextpay.link/silva-design/${product.id.replace(/^np_prod_/, '')}`;
     navigator.clipboard.writeText(url);
     onShowToast(`Link de pagamento para "${product.title}" copiado com sucesso!`);
   };

@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { INITIAL_CLIENTS } from '../data/mockData';
+import type { ClientRow } from '../data/mockData';
 
 interface ClientsViewProps {
+  clients: ClientRow[];
   onShowToast: (msg: string) => void;
   onOpenNewChargeForClient: (clientName: string) => void;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({
+  clients,
   _onShowToast,
   onOpenNewChargeForClient,
 }: ClientsViewProps & { _onShowToast?: (msg: string) => void }) => {
-  const [clients] = useState(INITIAL_CLIENTS);
   const [search, setSearch] = useState('');
 
   const filteredClients = clients.filter((cli) => {

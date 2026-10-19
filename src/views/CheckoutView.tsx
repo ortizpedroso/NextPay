@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { ProductItem, PaymentLink } from '../data/mockData';
+import { createCheckoutSession, getCheckoutSession } from '../lib/api/checkoutSession';
+import type { PublicCheckoutPayload } from '../lib/api/publicCheckout';
 
 interface CheckoutViewProps {
   selectedItem?: ProductItem | PaymentLink | null;
+  publicCheckout?: PublicCheckoutPayload | null;
   onBackToDashboard: () => void;
   onShowToast: (msg: string) => void;
 }
 
 export const CheckoutView: React.FC<CheckoutViewProps> = ({
   selectedItem,
+  publicCheckout,
   onBackToDashboard,
-  _onShowToast,
-}: CheckoutViewProps & { _onShowToast?: CheckoutViewProps['onShowToast'] }) => {
+  onShowToast,
+}) => {
   const [selectedMethod, setSelectedMethod] = useState<'pix' | 'card' | 'boleto'>('pix');
   const [copiedPix, setCopiedPix] = useState(false);
   const [cardNumber, setCardNumber] = useState('');
@@ -23,6 +27,9 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   const [cpf, setCpf] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [sessionPublicId, setSessionPublicId] = useState<string | null>(null);
+  const [pixCode, setPixCode] = useState('');
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
 
   // 15-minute countdown timer
   const [timeLeft, setTimeLeft] = useState(14 * 60 + 59);
@@ -55,12 +62,69 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   const pixTotal = basePrice - pixDiscount;
 
   const currentTotal = selectedMethod === 'pix' ? pixTotal : basePrice;
+  const amountCents = Math.round(currentTotal * 100);
 
-  // Pix code
-  const pixCode =
-    '00020126580014br.gov.bcb.pix0136e92bca71-9f93-4a11-a831-285627db86f552040000530398654071710.005802BR5921ESTUDIO SILVA BRAND6009SAO PAULO62070503***6304D1B8';
+  useEffect(() => {
+    if (!sessionPublicId) {
+      return;
+    }
+
+    const poll = setInterval(() => {
+      void getCheckoutSession(sessionPublicId)
+        .then((session) => {
+          if (session.status === 'RECEIVED' || session.status === 'CONFIRMED') {
+            setIsSuccess(true);
+          }
+        })
+        .catch(() => undefined);
+    }, 3000);
+
+    return () => clearInterval(poll);
+  }, [sessionPublicId]);
+
+  const handleStartPayment = async () => {
+    if (!cpf.trim() || !whatsapp.trim()) {
+      onShowToast('Informe CPF e WhatsApp para continuar.');
+      return;
+    }
+
+    setIsCreatingSession(true);
+    try {
+      const method =
+        selectedMethod === 'pix' ? 'PIX' : selectedMethod === 'card' ? 'CREDIT_CARD' : 'BOLETO';
+
+      const session = await createCheckoutSession({
+        amountCents,
+        description: itemTitle,
+        method,
+        paymentLinkPublicId:
+          publicCheckout?.kind === 'payment_link' ? publicCheckout.linkPublicId : undefined,
+        productPublicId:
+          publicCheckout?.kind === 'product' ? publicCheckout.productPublicId : undefined,
+        customer: {
+          name: cardHolder.trim() || 'Cliente NextPay',
+          email: 'cliente.checkout@nextpay.test',
+          document: cpf.replace(/\D/g, ''),
+        },
+      });
+
+      setSessionPublicId(session.sessionPublicId);
+      if (session.pixCopyPaste) {
+        setPixCode(session.pixCopyPaste);
+      }
+      onShowToast('Pagamento iniciado. Aguarde a confirmação.');
+    } catch (error) {
+      onShowToast(error instanceof Error ? error.message : 'Falha ao iniciar pagamento.');
+    } finally {
+      setIsCreatingSession(false);
+    }
+  };
 
   const handleCopyPix = () => {
+    if (!pixCode) {
+      onShowToast('Gere o Pix antes de copiar.');
+      return;
+    }
     navigator.clipboard.writeText(pixCode);
     setCopiedPix(true);
     setTimeout(() => setCopiedPix(false), 2000);
@@ -513,6 +577,15 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                       </div>
                     </div>
 
+                    <button
+                      type="button"
+                      disabled={isCreatingSession}
+                      onClick={() => void handleStartPayment()}
+                      className="w-full h-12 bg-primary text-on-primary font-headline-sm rounded-lg font-semibold disabled:opacity-50"
+                    >
+                      {isCreatingSession ? 'Gerando Pix...' : 'Gerar Pix Dinâmico'}
+                    </button>
+
                     <div className="flex flex-col gap-2">
                       <label className="font-label-md text-label-md text-on-surface font-medium flex items-center justify-between">
                         <span>Pix Copia e Cola</span>
@@ -649,17 +722,14 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
                     <button
                       type="button"
-                      disabled
-                      title="Em breve (Fase 3)"
-                      className="w-full h-12 bg-surface-container-high text-on-surface-variant/70 font-headline-sm text-headline-sm rounded-lg shadow-none cursor-not-allowed flex items-center justify-center gap-2 mt-2 font-semibold opacity-80"
+                      disabled={isCreatingSession}
+                      onClick={() => void handleStartPayment()}
+                      className="w-full h-12 bg-primary text-on-primary font-headline-sm text-headline-sm rounded-lg shadow-sm flex items-center justify-center gap-2 mt-2 font-semibold disabled:opacity-50"
                     >
                       <span className="material-symbols-outlined text-lg">lock</span>
                       <span>
                         Pagar R$ {basePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}{' '}
                         com Cartão
-                      </span>
-                      <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
-                        Em breve
                       </span>
                     </button>
                   </form>
@@ -731,17 +801,14 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
                     <button
                       type="button"
-                      disabled
-                      title="Em breve (Fase 3)"
-                      className="w-full h-12 bg-surface-container-high text-on-surface-variant/70 font-headline-sm text-headline-sm rounded-lg shadow-none cursor-not-allowed flex items-center justify-center gap-2 font-semibold opacity-80"
+                      disabled={isCreatingSession}
+                      onClick={() => void handleStartPayment()}
+                      className="w-full h-12 bg-primary text-on-primary font-headline-sm text-headline-sm rounded-lg shadow-sm flex items-center justify-center gap-2 font-semibold disabled:opacity-50"
                     >
                       <span className="material-symbols-outlined text-lg">receipt</span>
                       <span>
                         Gerar Boleto Registrado (R${' '}
                         {basePrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})
-                      </span>
-                      <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
-                        Em breve
                       </span>
                     </button>
                   </form>
