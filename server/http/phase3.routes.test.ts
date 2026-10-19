@@ -2,7 +2,12 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InMemoryPaymentGateway } from '../gateway/adapters/in-memory-gateway.adapter';
-import { createApp } from '../createApp';
+import {
+  createApp,
+  InMemoryCheckoutSessionStore,
+  InMemoryLedgerStore,
+  NoopOutboundWebhookService,
+} from '../createApp';
 import { InMemoryIdempotencyStore } from '../payments/inMemoryIdempotencyStore';
 import { InMemoryWebhookEventStore } from '../payments/webhookEventStore';
 import type { CredentialRepositoryPort } from './routes/adminCredentials.routes';
@@ -26,6 +31,19 @@ describe('Phase 3 payments & webhooks API', () => {
     process.env.MASTER_ENCRYPTION_KEY = Buffer.from('c'.repeat(32)).toString('base64');
   });
 
+  function buildApp(overrides: Parameters<typeof createApp>[0] = {}) {
+    return createApp({
+      credentialRepository: mockCredentialRepository(),
+      resolvePaymentGateway: async () => new InMemoryPaymentGateway('SANDBOX'),
+      webhookEventStore: new InMemoryWebhookEventStore(),
+      idempotencyStore: new InMemoryIdempotencyStore(),
+      checkoutSessionStore: new InMemoryCheckoutSessionStore(),
+      ledgerStore: new InMemoryLedgerStore(),
+      outboundWebhookService: new NoopOutboundWebhookService(),
+      ...overrides,
+    });
+  }
+
   it('POST /api/v1/payments cria cobrança PIX neutra', async () => {
     const gateway = new InMemoryPaymentGateway('SANDBOX');
     const customer = await gateway.createCustomer({
@@ -34,10 +52,8 @@ describe('Phase 3 payments & webhooks API', () => {
       document: '39053344705',
     });
 
-    const app = createApp({
-      credentialRepository: mockCredentialRepository(),
+    const app = buildApp({
       resolvePaymentGateway: async () => gateway,
-      idempotencyStore: new InMemoryIdempotencyStore(),
     });
 
     const res = await request(app)
@@ -59,11 +75,7 @@ describe('Phase 3 payments & webhooks API', () => {
   });
 
   it('POST /api/v1/webhooks/inbound é idempotente', async () => {
-    const app = createApp({
-      credentialRepository: mockCredentialRepository(),
-      resolvePaymentGateway: async () => new InMemoryPaymentGateway('SANDBOX'),
-      webhookEventStore: new InMemoryWebhookEventStore(),
-    });
+    const app = buildApp();
 
     const payload = {
       event: 'PAYMENT_RECEIVED',
@@ -87,11 +99,7 @@ describe('Phase 3 payments & webhooks API', () => {
   });
 
   it('rejeita webhook sem token', async () => {
-    const app = createApp({
-      credentialRepository: mockCredentialRepository(),
-      resolvePaymentGateway: async () => new InMemoryPaymentGateway('SANDBOX'),
-      webhookEventStore: new InMemoryWebhookEventStore(),
-    });
+    const app = buildApp();
 
     const res = await request(app)
       .post('/api/v1/webhooks/inbound')

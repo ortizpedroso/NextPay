@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { NEXTPAY_ACCOUNT } from '../../data/mockData';
+import { requestWithdrawal } from '../../lib/api/adminOperations';
+import { getAdminBearerToken } from '../../lib/api/adminSession';
 
 interface WithdrawModalProps {
   isOpen: boolean;
@@ -13,13 +15,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   isOpen,
   onClose,
   availableBalance,
-  _onConfirmWithdraw,
-  _onShowToast,
-}: WithdrawModalProps & {
-  _onConfirmWithdraw?: WithdrawModalProps['onConfirmWithdraw'];
-  _onShowToast?: WithdrawModalProps['onShowToast'];
+  onConfirmWithdraw,
+  onShowToast,
 }) => {
   const [withdrawAmount, setWithdrawAmount] = useState('18420.50');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
@@ -94,15 +94,41 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
           <div className="pt-2">
             <button
               type="button"
-              disabled
-              title="Em breve (Fase 6)"
-              className="w-full py-2.5 px-4 rounded-xl bg-surface-container-high text-on-surface-variant/70 cursor-not-allowed font-semibold text-body-md flex items-center justify-center gap-2 opacity-80"
+              disabled={isSubmitting}
+              onClick={() => {
+                void (async () => {
+                  const amount = Number.parseFloat(withdrawAmount.replace(',', '.'));
+                  if (Number.isNaN(amount) || amount <= 0) {
+                    onShowToast('Informe um valor de saque válido.');
+                    return;
+                  }
+
+                  setIsSubmitting(true);
+                  try {
+                    if (getAdminBearerToken()) {
+                      const result = await requestWithdrawal({
+                        amountCents: Math.round(amount * 100),
+                        pixKey: NEXTPAY_ACCOUNT.pixKey,
+                      });
+                      onShowToast(`Saque enfileirado (${result.protocol}).`);
+                    } else {
+                      onShowToast('Sessão admin necessária. Saque simulado localmente.');
+                    }
+                    onConfirmWithdraw(amount);
+                    onClose();
+                  } catch (error) {
+                    onShowToast(
+                      error instanceof Error ? error.message : 'Falha ao solicitar saque.',
+                    );
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                })();
+              }}
+              className="w-full py-2.5 px-4 rounded-xl bg-secondary text-on-secondary font-semibold text-body-md flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[20px]">bolt</span>
-              <span>Confirmar Transferência Pix</span>
-              <span className="text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
-                Em breve
-              </span>
+              <span>{isSubmitting ? 'Processando...' : 'Confirmar Transferência Pix'}</span>
             </button>
           </div>
         </form>

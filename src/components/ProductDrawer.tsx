@@ -338,16 +338,12 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
             Cancelar
           </button>
           <button
-            type="button"
-            disabled
-            title="Em breve (Fase 4)"
-            className="flex items-center gap-space-xs bg-surface-container-high text-on-surface-variant/70 cursor-not-allowed px-space-lg py-2.5 rounded-lg font-label-md text-label-md font-semibold opacity-80"
+            type="submit"
+            form="item-form"
+            className="flex items-center gap-space-xs bg-primary text-on-primary hover:bg-primary-container px-space-lg py-2.5 rounded-lg font-label-md text-label-md font-semibold"
           >
             <span className="material-symbols-outlined text-[18px]">check</span>
             <span>Salvar e Gerar Link</span>
-            <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
-              Em breve
-            </span>
           </button>
         </div>
       </aside>

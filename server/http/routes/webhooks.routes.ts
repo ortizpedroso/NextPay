@@ -3,12 +3,18 @@ import { Router } from 'express';
 import type { PaymentGatewayInterface } from '../../gateway/payment-gateway.interface';
 import type { VaultEnvironment } from '../../vault/processorCredentialVault';
 import type { WebhookEventStore } from '../../payments/webhookEventStore';
+import type { CheckoutSessionStore } from '../../checkout/checkoutSessionStore';
+import type { LedgerStore } from '../../payments/ledgerStore';
+import type { OutboundWebhookService } from '../../payments/outboundWebhookService';
 import type { PaymentGatewayResolver } from './payments.routes';
 
 export function createWebhooksRouter(
   resolveGateway: PaymentGatewayResolver,
   webhookEventStore: WebhookEventStore,
   defaultEnvironment: VaultEnvironment = 'SANDBOX',
+  checkoutStore?: CheckoutSessionStore,
+  ledgerStore?: LedgerStore,
+  outboundWebhookService?: OutboundWebhookService,
 ): Router {
   const router = Router();
 
@@ -51,6 +57,19 @@ export function createWebhooksRouter(
         eventType: normalized.eventType,
         payloadJson: JSON.stringify(req.body),
       });
+
+      if (normalized.paymentId && normalized.status) {
+        await checkoutStore?.updateByPaymentId(normalized.paymentId, normalized.status);
+        await ledgerStore?.upsert({
+          neutralPaymentId: normalized.paymentId,
+          amountCents: normalized.amountCents ?? 0,
+          status: normalized.status,
+          method: 'PIX',
+          description: 'Atualização via webhook inbound',
+        });
+      }
+
+      await outboundWebhookService?.dispatch(normalized.eventType, normalized);
 
       res.status(200).json({
         status: 'processed',

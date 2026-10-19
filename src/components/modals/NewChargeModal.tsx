@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 
+import { createAdminPayment } from '../../lib/api/adminOperations';
+import { getAdminBearerToken } from '../../lib/api/adminSession';
+
 interface NewChargeModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -15,19 +18,81 @@ interface NewChargeModalProps {
 export const NewChargeModal: React.FC<NewChargeModalProps> = ({
   isOpen,
   onClose,
-  _onChargeCreated,
-  _onShowToast,
-}: NewChargeModalProps & {
-  _onChargeCreated?: NewChargeModalProps['onChargeCreated'];
-  _onShowToast?: NewChargeModalProps['onShowToast'];
+  onChargeCreated,
+  onShowToast,
 }) => {
   const [clientName, setClientName] = useState('');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('350.00');
   const [method, setMethod] = useState<'Pix' | 'Cartão' | 'Boleto'>('Pix');
   const [sendWhatsApp, setSendWhatsApp] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
+
+  const mapMethod = (value: 'Pix' | 'Cartão' | 'Boleto'): 'PIX' | 'CREDIT_CARD' | 'BOLETO' => {
+    if (value === 'Pix') return 'PIX';
+    if (value === 'Boleto') return 'BOLETO';
+    return 'CREDIT_CARD';
+  };
+
+  const handleEmit = async () => {
+    const numericAmount = Number.parseFloat(amount.replace(',', '.'));
+    if (!clientName.trim() || !description.trim() || Number.isNaN(numericAmount)) {
+      onShowToast('Preencha cliente, descrição e valor válido.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (getAdminBearerToken()) {
+        const customerResponse = await fetch('/api/v1/customers', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${getAdminBearerToken()}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            environment: 'SANDBOX',
+            name: clientName.trim(),
+            email: `${clientName.trim().toLowerCase().replace(/\s+/g, '.')}@cliente.nextpay.test`,
+            document: '39053344705',
+          }),
+        });
+
+        if (customerResponse.ok) {
+          const customerJson = (await customerResponse.json()) as {
+            customer: { customerId: string };
+          };
+          await createAdminPayment({
+            amountCents: Math.round(numericAmount * 100),
+            method: mapMethod(method),
+            description: description.trim(),
+            customerId: customerJson.customer.customerId,
+            idempotencyKey: `charge-${Date.now()}`,
+          });
+        }
+      }
+
+      onChargeCreated({
+        clientName: clientName.trim(),
+        description: description.trim(),
+        amount: numericAmount,
+        method,
+      });
+
+      if (sendWhatsApp) {
+        onShowToast('Cobrança emitida. Disparo WhatsApp será configurado na próxima etapa.');
+      } else {
+        onShowToast('Cobrança emitida com sucesso.');
+      }
+      onClose();
+    } catch (error) {
+      onShowToast(error instanceof Error ? error.message : 'Falha ao emitir cobrança.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-space-md bg-slate-900/60 backdrop-blur-sm">
@@ -141,15 +206,12 @@ export const NewChargeModal: React.FC<NewChargeModalProps> = ({
             </button>
             <button
               type="button"
-              disabled
-              title="Em breve (Fase 3)"
-              className="px-space-lg py-2.5 rounded-xl bg-surface-container-high text-on-surface-variant/70 cursor-not-allowed font-semibold text-body-md flex items-center gap-1.5 opacity-80"
+              disabled={isSubmitting}
+              onClick={() => void handleEmit()}
+              className="px-space-lg py-2.5 rounded-xl bg-primary text-on-primary font-semibold text-body-md flex items-center gap-1.5 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[18px]">bolt</span>
-              <span>Emitir Cobrança Agora</span>
-              <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
-                Em breve
-              </span>
+              <span>{isSubmitting ? 'Emitindo...' : 'Emitir Cobrança Agora'}</span>
             </button>
           </div>
         </form>

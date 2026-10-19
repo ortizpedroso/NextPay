@@ -63,3 +63,50 @@ model InboundWebhookEvent {
   payloadJson      String   @db.Text
   createdAt        DateTime @default(now())
 }
+
+model CheckoutSession {
+  id               String             @id @default(cuid())
+  sessionPublicId  String             @unique @db.VarChar(64)
+  amountCents      Int
+  description      String             @db.VarChar(500)
+  method           String             @db.VarChar(32)
+  status           String             @db.VarChar(32)
+  paymentId        String?            @db.VarChar(80)
+  pixCopyPaste     String?            @db.Text
+  customerName     String             @db.VarChar(140)
+  customerEmail    String             @db.VarChar(180)
+  customerDocument String             @db.VarChar(18)
+  environment      GatewayEnvironment @default(SANDBOX)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+}
+
+model MerchantCustomer {
+  id                String   @id @default(cuid())
+  neutralCustomerId String   @unique @db.VarChar(80)
+  name              String   @db.VarChar(140)
+  email             String   @db.VarChar(180)
+  document          String   @db.VarChar(18)
+  createdAt         DateTime @default(now())
+}
+
+model LedgerTransaction {
+  id               String   @id @default(cuid())
+  neutralPaymentId String   @unique @db.VarChar(80)
+  amountCents      Int
+  netAmountCents   Int?
+  status           String   @db.VarChar(32)
+  method           String   @db.VarChar(32)
+  description      String   @db.VarChar(500)
+  customerName     String?  @db.VarChar(140)
+  createdAt        DateTime @default(now())
+}
+
+model OutboundWebhookDelivery {
+  id          String   @id @default(cuid())
+  targetUrl   String   @db.VarChar(500)
+  eventType   String   @db.VarChar(64)
+  payloadJson String   @db.Text
+  status      String   @db.VarChar(32)
+  createdAt   DateTime @default(now())
+}

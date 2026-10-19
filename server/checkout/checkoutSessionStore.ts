@@ -1,0 +1,119 @@
+import { GatewayEnvironment, PrismaClient } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
+
+export type CheckoutSessionRecord = {
+  sessionPublicId: string;
+  amountCents: number;
+  description: string;
+  method: string;
+  status: string;
+  paymentId?: string | null;
+  pixCopyPaste?: string | null;
+  customerName: string;
+  customerEmail: string;
+  customerDocument: string;
+  environment: GatewayEnvironment;
+};
+
+export interface CheckoutSessionStore {
+  create(record: CheckoutSessionRecord): Promise<CheckoutSessionRecord>;
+  getByPublicId(sessionPublicId: string): Promise<CheckoutSessionRecord | null>;
+  updateByPaymentId(
+    paymentId: string,
+    status: string,
+  ): Promise<CheckoutSessionRecord | null>;
+}
+
+export class InMemoryCheckoutSessionStore implements CheckoutSessionStore {
+  private readonly rows = new Map<string, CheckoutSessionRecord>();
+
+  async create(record: CheckoutSessionRecord): Promise<CheckoutSessionRecord> {
+    this.rows.set(record.sessionPublicId, record);
+    return record;
+  }
+
+  async getByPublicId(sessionPublicId: string): Promise<CheckoutSessionRecord | null> {
+    return this.rows.get(sessionPublicId) ?? null;
+  }
+
+  async updateByPaymentId(
+    paymentId: string,
+    status: string,
+  ): Promise<CheckoutSessionRecord | null> {
+    for (const [key, row] of this.rows.entries()) {
+      if (row.paymentId === paymentId) {
+        const updated = { ...row, status };
+        this.rows.set(key, updated);
+        return updated;
+      }
+    }
+    return null;
+  }
+}
+
+export class PrismaCheckoutSessionStore implements CheckoutSessionStore {
+  constructor(private readonly prisma: PrismaClient) {}
+
+  async create(record: CheckoutSessionRecord): Promise<CheckoutSessionRecord> {
+    await this.prisma.checkoutSession.create({
+      data: record,
+    });
+    return record;
+  }
+
+  async getByPublicId(sessionPublicId: string): Promise<CheckoutSessionRecord | null> {
+    const row = await this.prisma.checkoutSession.findUnique({
+      where: { sessionPublicId },
+    });
+    return row ? mapRow(row) : null;
+  }
+
+  async updateByPaymentId(
+    paymentId: string,
+    status: string,
+  ): Promise<CheckoutSessionRecord | null> {
+    const row = await this.prisma.checkoutSession.findFirst({
+      where: { paymentId },
+    });
+    if (!row) {
+      return null;
+    }
+    const updated = await this.prisma.checkoutSession.update({
+      where: { id: row.id },
+      data: { status },
+    });
+    return mapRow(updated);
+  }
+}
+
+export function newCheckoutPublicId(): string {
+  return `cs_${randomUUID().replace(/-/g, '').slice(0, 20)}`;
+}
+
+function mapRow(row: {
+  sessionPublicId: string;
+  amountCents: number;
+  description: string;
+  method: string;
+  status: string;
+  paymentId: string | null;
+  pixCopyPaste: string | null;
+  customerName: string;
+  customerEmail: string;
+  customerDocument: string;
+  environment: GatewayEnvironment;
+}): CheckoutSessionRecord {
+  return {
+    sessionPublicId: row.sessionPublicId,
+    amountCents: row.amountCents,
+    description: row.description,
+    method: row.method,
+    status: row.status,
+    paymentId: row.paymentId,
+    pixCopyPaste: row.pixCopyPaste,
+    customerName: row.customerName,
+    customerEmail: row.customerEmail,
+    customerDocument: row.customerDocument,
+    environment: row.environment,
+  };
+}
