@@ -5,6 +5,8 @@ import { hasDashboardSession } from '../lib/api/dashboardAuth';
 import {
   fetchSubscriptionMetrics,
   fetchSubscriptionPlans,
+  cancelSubscription,
+  createSubscription,
   fetchSubscriptions,
   type SubscriptionDto,
   type SubscriptionMetricsDto,
@@ -46,6 +48,15 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
   const [subscribers, setSubscribers] = useState<SubscriptionDto[]>([]);
   const [metrics, setMetrics] = useState<SubscriptionMetricsDto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    planTitle: '',
+    priceBrl: '99,90',
+    cadenceLabel: 'Mensal',
+    customerName: '',
+    customerEmail: '',
+    paymentMethod: 'Pix Recorrente',
+  });
 
   const reload = useCallback(async () => {
     if (!hasDashboardSession()) {
@@ -120,11 +131,18 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
           <div className="flex items-center gap-space-sm">
             <button
               type="button"
-              onClick={() => onNavigate('produtos-e-servicos')}
+              onClick={() => setShowCreateForm((v) => !v)}
               className="flex items-center gap-1.5 bg-primary text-on-primary hover:bg-primary-container px-space-md py-2.5 rounded-xl font-label-md text-label-md font-semibold shadow-sm transition-all"
             >
               <span className="material-symbols-outlined text-[18px]">add_circle</span>
-              <span>Novo Plano de Assinatura</span>
+              <span>Nova Assinatura</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('produtos-e-servicos')}
+              className="flex items-center gap-1.5 border border-surface-container px-space-md py-2.5 rounded-xl font-label-md text-label-md font-semibold"
+            >
+              Planos no catálogo
             </button>
           </div>
         </div>
@@ -174,10 +192,72 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
               Automático
             </div>
             <span className="font-body-sm text-outline mt-0.5 block">
-              Job `process-renewals` (API)
+              Job `/api/v1/jobs/process-subscription-renewals`
             </span>
           </div>
         </div>
+
+        {showCreateForm ? (
+          <div className="bg-surface-container-lowest p-space-md rounded-xl border border-surface-container space-y-3">
+            <h2 className="font-headline-sm text-headline-sm">Cadastrar assinatura</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(
+                [
+                  ['planTitle', 'Título do plano'],
+                  ['priceBrl', 'Valor (R$)'],
+                  ['cadenceLabel', 'Cadência'],
+                  ['customerName', 'Cliente'],
+                  ['customerEmail', 'E-mail'],
+                  ['paymentMethod', 'Forma de pagamento'],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="text-body-sm flex flex-col gap-1">
+                  {label}
+                  <input
+                    className="px-3 py-2 rounded-lg border border-surface-container bg-surface-container-low"
+                    value={createForm[key]}
+                    onChange={(e) => setCreateForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                  />
+                </label>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-secondary text-on-secondary font-semibold text-body-sm"
+              onClick={() => {
+                void (async () => {
+                  if (!hasDashboardSession()) {
+                    onShowToast('Faça login para criar assinaturas.');
+                    return;
+                  }
+                  const normalized = createForm.priceBrl.replace(/\./g, '').replace(',', '.');
+                  const priceCents = Math.round(Number.parseFloat(normalized) * 100);
+                  if (!createForm.planTitle.trim() || Number.isNaN(priceCents) || priceCents <= 0) {
+                    onShowToast('Preencha plano e valor válidos.');
+                    return;
+                  }
+                  try {
+                    await createSubscription({
+                      planTitle: createForm.planTitle.trim(),
+                      priceCents,
+                      cadenceLabel: createForm.cadenceLabel.trim(),
+                      customerName: createForm.customerName.trim(),
+                      customerEmail: createForm.customerEmail.trim(),
+                      paymentMethod: createForm.paymentMethod.trim(),
+                    });
+                    onShowToast('Assinatura criada.');
+                    setShowCreateForm(false);
+                    await reload();
+                  } catch (error) {
+                    onShowToast(error instanceof Error ? error.message : 'Erro ao criar.');
+                  }
+                })();
+              }}
+            >
+              Salvar assinatura
+            </button>
+          </div>
+        ) : null}
 
         <div className="space-y-space-sm">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">Planos Ativos</h2>
@@ -309,12 +389,13 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                   <th className="py-3 px-4 font-semibold">Próxima Renovação</th>
                   <th className="py-3 px-4 font-semibold text-right">Total Acumulado</th>
                   <th className="py-3 px-4 font-semibold text-center">Status</th>
+                  <th className="py-3 px-4 font-semibold text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-container">
                 {filteredSubscribers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-on-surface-variant">
+                    <td colSpan={7} className="py-6 text-center text-on-surface-variant">
                       {hasDashboardSession()
                         ? 'Nenhuma assinatura cadastrada.'
                         : 'Faça login para ver assinaturas.'}
@@ -359,6 +440,31 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                             ></span>
                             {label}
                           </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {sub.status !== 'CANCELED' ? (
+                            <button
+                              type="button"
+                              className="text-xs font-semibold text-error hover:underline"
+                              onClick={() => {
+                                void (async () => {
+                                  try {
+                                    await cancelSubscription(sub.subscriptionPublicId);
+                                    onShowToast('Assinatura cancelada.');
+                                    await reload();
+                                  } catch (error) {
+                                    onShowToast(
+                                      error instanceof Error ? error.message : 'Falha ao cancelar.',
+                                    );
+                                  }
+                                })();
+                              }}
+                            >
+                              Cancelar
+                            </button>
+                          ) : (
+                            '—'
+                          )}
                         </td>
                       </tr>
                     );

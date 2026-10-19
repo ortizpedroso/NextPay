@@ -69,6 +69,14 @@ Com `NODE_ENV=production`, o Express serve o SPA em `dist/` na mesma porta (`POR
 
 ### 5. Banco de Dados (PostgreSQL)
 
+Suba o Postgres local (opcional):
+
+```bash
+docker compose up -d
+```
+
+Configure `DATABASE_URL=postgresql://nextpay:nextpay_local@localhost:5432/nextpay?schema=public` no `.env`, depois:
+
 ```bash
 npx prisma migrate deploy
 ```
@@ -79,26 +87,26 @@ npx prisma migrate deploy
 
 As seguintes variáveis de ambiente são utilizadas pelo NextPay:
 
-| Variável                   | Descrição                                                                |
-| :------------------------- | :----------------------------------------------------------------------- |
-| `PORT`                     | Porta do servidor Express (padrão: `3001`)                               |
-| `APP_URL`                  | URL pública do painel (CORS)                                             |
-| `DATABASE_URL`             | PostgreSQL principal                                                     |
-| `DATABASE_URL_TEST`        | PostgreSQL para testes locais                                            |
-| `PAYMENT_GATEWAY_MODE`     | `fixture` / `in_memory` = adaptador simulado (não exige vault)           |
-| `MASTER_ENCRYPTION_KEY`    | 32 bytes (Base64/hex) para vault de credenciais; omita em modo `fixture` |
-| `PROCESSOR_API_BASE_URL_*` | Base URL HTTP do processador primário (sandbox/produção)                 |
-| `JWT_SECRET`               | Assinatura JWT do lojista                                                |
-| `MERCHANT_LOGIN_EMAIL`     | E-mail de login do painel                                                |
-| `MERCHANT_LOGIN_PASSWORD`  | Senha de login (somente servidor)                                        |
-| `ADMIN_API_TOKEN`          | Bearer legado para rotas administrativas                                 |
-| `WEBHOOK_INBOUND_SECRET`   | Token `x-nextpay-webhook-token` nos webhooks inbound                     |
-| `ASAAS_ENV`                | `sandbox` ou `production` (ambiente padrão de webhooks/gateway)          |
-| `NEXTPAY_WALLET_ID`        | Carteira NextPay para split de comissão                                  |
-| `NEXTPAY_SPLIT_PERCENT`    | Percentual do split para a carteira NextPay (padrão `1`)                 |
-| `INTERNAL_JOB_TOKEN`       | Bearer para `POST /api/v1/jobs/process-outbound-retries` (cron interno)  |
-| `MERCHANT_WEBHOOK_URL`     | Destino dos webhooks outbound enfileirados pelo ledger                   |
-| `VITE_DEMO_MODE`           | `false` em produção: desliga fallbacks locais do painel sem login        |
+| Variável                   | Descrição                                                                               |
+| :------------------------- | :-------------------------------------------------------------------------------------- |
+| `PORT`                     | Porta do servidor Express (padrão: `3001`)                                              |
+| `APP_URL`                  | URL pública do painel (CORS)                                                            |
+| `DATABASE_URL`             | PostgreSQL principal                                                                    |
+| `DATABASE_URL_TEST`        | PostgreSQL para testes locais                                                           |
+| `PAYMENT_GATEWAY_MODE`     | `fixture` / `in_memory` = adaptador simulado (não exige vault)                          |
+| `MASTER_ENCRYPTION_KEY`    | 32 bytes (Base64/hex) para vault de credenciais; omita em modo `fixture`                |
+| `PROCESSOR_API_BASE_URL_*` | Base URL HTTP do processador primário (sandbox/produção)                                |
+| `JWT_SECRET`               | Assinatura JWT do lojista                                                               |
+| `MERCHANT_LOGIN_EMAIL`     | E-mail de login do painel                                                               |
+| `MERCHANT_LOGIN_PASSWORD`  | Senha de login (somente servidor)                                                       |
+| `ADMIN_API_TOKEN`          | Bearer legado para rotas administrativas                                                |
+| `WEBHOOK_INBOUND_SECRET`   | Token `x-nextpay-webhook-token` nos webhooks inbound                                    |
+| `ASAAS_ENV`                | `sandbox` ou `production` (ambiente padrão de webhooks/gateway)                         |
+| `NEXTPAY_WALLET_ID`        | Carteira NextPay para split de comissão                                                 |
+| `NEXTPAY_SPLIT_PERCENT`    | Percentual do split para a carteira NextPay (padrão `1`)                                |
+| `INTERNAL_JOB_TOKEN`       | Bearer para jobs internos (`process-outbound-retries`, `process-subscription-renewals`) |
+| `MERCHANT_WEBHOOK_URL`     | Destino dos webhooks outbound enfileirados pelo ledger                                  |
+| `VITE_DEMO_MODE`           | `false` em produção: desliga fallbacks locais do painel sem login                       |
 
 > **Nota de Segurança**: Chaves de API e segredos só existem no servidor e são lidos via `process.env`. Nenhuma credencial é exposta ao navegador.
 
@@ -115,7 +123,13 @@ As seguintes variáveis de ambiente são utilizadas pelo NextPay:
 7. **Checkout cartão (white-label)**: sessões `CREDIT_CARD` redirecionam para `/hosted-card/:token` — sem armazenamento de PAN; confirmação stub usa apenas últimos 4 dígitos.
 8. **Saques**: rotas `/api/v1/withdrawals` operam em modo stub até credenciais reais de Pix-out do processador; consulte status via `GET /api/v1/withdrawals/:protocol`.
 9. **Build & start**: `npm run build && NODE_ENV=production npm start` (Express serve `dist/` + API na mesma porta).
-10. **Testes**: `npm test` (Vitest + Postgres no CI). E2E opcional: `npx playwright install chromium && npm run test:e2e`.
+10. **Testes**: `npm test` (Vitest + Postgres no CI). E2E: `npx playwright install chromium && npm run test:e2e` (também no GitHub Actions).
+11. **Onboarding SaaS**: `POST /api/v1/admin/merchants` (Bearer `ADMIN_API_TOKEN`) cria tenant e usuário opcional.
+12. **Jobs internos**: `POST /api/v1/jobs/process-subscription-renewals` com `INTERNAL_JOB_TOKEN` (não exposto ao painel).
+
+### Escopo PCI (cartão hosted)
+
+O fluxo `/hosted-card/:token` **não** persiste PAN/CVV no NextPay: apenas últimos 4 dígitos e confirmação stub. Em produção, redirecione ou tokenize via iframe/certificado do processador certificado PCI. O painel merchant não deve receber dados de cartão completos — mantenha tokenização no domínio do adquirente ou SAQ A-EP equivalente.
 
 ---
 

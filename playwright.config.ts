@@ -16,6 +16,9 @@ export default defineConfig({
       env: {
         ...process.env,
         PORT: '3001',
+        DATABASE_URL:
+          process.env.DATABASE_URL ??
+          'postgresql://test_user:test_password@localhost:5432/nextpay_test?schema=public',
         PAYMENT_GATEWAY_MODE: 'fixture',
         ADMIN_API_TOKEN: 'e2e-admin-token-0123456789',
         JWT_SECRET: 'e2e-jwt-secret-0123456789abcdef',

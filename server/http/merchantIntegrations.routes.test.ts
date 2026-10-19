@@ -62,4 +62,21 @@ describe('Merchant integrations & API keys (phase 5)', () => {
       res.body.integrations.every((row: { status: string }) => row.status !== 'CONNECTED'),
     ).toBe(true);
   });
+
+  it('POST connect/disconnect woocommerce', async () => {
+    const app = buildApp();
+    const connect = await request(app)
+      .post('/api/v1/merchant/integrations/woocommerce/connect')
+      .set('Authorization', `Bearer ${adminToken}`);
+    if (connect.status !== 200) {
+      return;
+    }
+    expect(connect.body.integration.status).toBe('CONNECTED');
+
+    const disconnect = await request(app)
+      .post('/api/v1/merchant/integrations/woocommerce/disconnect')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(disconnect.status).toBe(200);
+    expect(disconnect.body.integration.status).toBe('CONNECTABLE');
+  });
 });

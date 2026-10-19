@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { NEXTPAY_ACCOUNT } from '../../data/mockData';
 import { requestWithdrawal } from '../../lib/api/adminOperations';
-import { getAdminBearerToken } from '../../lib/api/adminSession';
+import { hasDashboardSession } from '../../lib/api/dashboardAuth';
+import type { MerchantProfileDto } from '../../lib/api/merchantProfile';
 
 interface WithdrawModalProps {
   isOpen: boolean;
   onClose: () => void;
   availableBalance: number;
+  merchantProfile: MerchantProfileDto | null;
   onConfirmWithdraw: (amount: number) => void;
   onShowToast: (msg: string) => void;
 }
@@ -15,9 +16,12 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   isOpen,
   onClose,
   availableBalance,
+  merchantProfile,
   onConfirmWithdraw,
   onShowToast,
 }) => {
+  const destinationLabel = merchantProfile?.email ?? 'Chave Pix cadastrada';
+  const pixKey = merchantProfile?.email ?? 'merchant@nextpay.test';
   const [withdrawAmount, setWithdrawAmount] = useState('18420.50');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -60,7 +64,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             <div className="flex justify-between text-body-sm">
               <span className="text-on-surface-variant">Conta de Destino:</span>
               <span className="font-semibold text-primary truncate max-w-[200px]">
-                {NEXTPAY_ACCOUNT.bankName} ({NEXTPAY_ACCOUNT.account})
+                {destinationLabel}
               </span>
             </div>
             <div className="flex justify-between text-body-sm">
@@ -105,15 +109,15 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
                   setIsSubmitting(true);
                   try {
-                    if (getAdminBearerToken()) {
-                      const result = await requestWithdrawal({
-                        amountCents: Math.round(amount * 100),
-                        pixKey: NEXTPAY_ACCOUNT.pixKey,
-                      });
-                      onShowToast(`Saque enfileirado (${result.protocol}).`);
-                    } else {
-                      onShowToast('Sessão admin necessária. Saque simulado localmente.');
+                    if (!hasDashboardSession()) {
+                      onShowToast('Faça login no painel para solicitar saque.');
+                      return;
                     }
+                    const result = await requestWithdrawal({
+                      amountCents: Math.round(amount * 100),
+                      pixKey,
+                    });
+                    onShowToast(`Saque enfileirado (${result.protocol}).`);
                     onConfirmWithdraw(amount);
                     onClose();
                   } catch (error) {

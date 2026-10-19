@@ -1,4 +1,8 @@
 import React, { useState } from 'react';
+
+import { MerchantSessionBar } from './merchant/MerchantSessionBar';
+import type { MerchantProfileDto } from '../lib/api/merchantProfile';
+import { isDemoMode } from '../lib/demoMode';
 import { NEXTPAY_ACCOUNT } from '../data/mockData';
 
 interface HeaderProps {
@@ -8,19 +12,23 @@ interface HeaderProps {
   onOpenCheckoutPreview: () => void;
   onToggleMobileSidebar: () => void;
   onShowToast: (msg: string) => void;
+  merchantProfile: MerchantProfileDto | null;
+  onSessionChanged: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenNewCharge,
   onOpenNewLink,
-  _onOpenSimulator,
   onOpenCheckoutPreview,
   onToggleMobileSidebar,
-  _onShowToast,
-}: HeaderProps & {
-  _onOpenSimulator?: HeaderProps['onOpenSimulator'];
-  _onShowToast?: HeaderProps['onShowToast'];
+  onShowToast,
+  merchantProfile,
+  onSessionChanged,
 }) => {
+  const profileEmail =
+    merchantProfile?.email ?? (isDemoMode() ? NEXTPAY_ACCOUNT.email : 'Faça login');
+  const profileName =
+    merchantProfile?.displayName ?? (isDemoMode() ? NEXTPAY_ACCOUNT.ownerName : 'Painel NextPay');
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -194,6 +202,10 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
+        <div className="hidden xl:block max-w-md flex-1 mx-4">
+          <MerchantSessionBar onSessionChanged={onSessionChanged} onShowToast={onShowToast} />
+        </div>
+
         {/* User Profile */}
         <div className="relative">
           <button
@@ -206,10 +218,10 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div className="hidden lg:flex flex-col text-left">
               <span className="font-title-md text-[12px] text-on-surface font-semibold leading-tight">
-                {NEXTPAY_ACCOUNT.email}
+                {profileEmail}
               </span>
               <span className="font-label-sm text-[10px] text-on-surface-variant leading-tight">
-                Conta: {NEXTPAY_ACCOUNT.account}
+                {profileName}
               </span>
             </div>
             <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
@@ -221,14 +233,14 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="absolute top-full right-0 mt-2 w-60 bg-surface-container-lowest rounded-xl shadow-xl border border-surface-container p-2 z-50">
               <div className="p-2 border-b border-surface-container">
                 <p className="font-title-md text-[13px] font-semibold text-on-surface">
-                  {NEXTPAY_ACCOUNT.ownerName}
+                  {profileName}
                 </p>
-                <p className="font-body-sm text-[11px] text-on-surface-variant">
-                  {NEXTPAY_ACCOUNT.email}
-                </p>
-                <p className="text-[10px] text-outline font-mono mt-1">
-                  Banco 461 • Ag 0001 • C/C 7342797-3
-                </p>
+                <p className="font-body-sm text-[11px] text-on-surface-variant">{profileEmail}</p>
+                {merchantProfile?.merchantId ? (
+                  <p className="text-[10px] text-outline font-mono mt-1">
+                    {merchantProfile.merchantId}
+                  </p>
+                ) : null}
               </div>
               <div className="py-1">
                 <button

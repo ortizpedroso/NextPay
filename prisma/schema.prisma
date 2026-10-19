@@ -30,6 +30,7 @@ model Merchant {
   subscriptions      Subscription[]
   merchantApiKeys    MerchantApiKey[]
   integrations       MerchantIntegration[]
+  withdrawalRequests WithdrawalRequest[]
 }
 
 /// Usuário de painel vinculado a um lojista.
@@ -217,6 +218,22 @@ model MerchantApiKey {
   keyHash     String    @db.VarChar(128)
   createdAt   DateTime  @default(now())
   revokedAt   DateTime?
+
+  @@index([merchantId])
+}
+
+/// Solicitação de saque Pix do lojista.
+model WithdrawalRequest {
+  id          String   @id @default(cuid())
+  merchantId  String
+  merchant    Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  protocol    String   @unique @db.VarChar(80)
+  amountCents Int
+  pixKey      String   @db.VarChar(180)
+  status      String   @db.VarChar(32)
+  message     String   @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([merchantId])
 }

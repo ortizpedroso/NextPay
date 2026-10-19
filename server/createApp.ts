@@ -35,6 +35,7 @@ import { createProductsRouter, InMemoryCatalogProductStore } from './http/routes
 import type { CatalogProductStore } from './http/routes/products.routes';
 import { createPaymentsRouter, type PaymentGatewayResolver } from './http/routes/payments.routes';
 import { createAdminDashboardRouter } from './http/routes/adminDashboard.routes';
+import { createAdminMerchantsRouter } from './http/routes/adminMerchants.routes';
 import { createMerchantAuthRouter } from './http/routes/merchantAuth.routes';
 import { createPublicCheckoutRouter } from './http/routes/publicCheckout.routes';
 import { createPublicPaymentLinksRouter } from './http/routes/publicPaymentLinks.routes';
@@ -50,7 +51,9 @@ import type { SubscriptionStore } from './subscriptions/subscriptionStore';
 import { createMerchantApiKeysRouter } from './http/routes/merchantApiKeys.routes';
 import { createMerchantIntegrationsRouter } from './http/routes/merchantIntegrations.routes';
 import { createJobsRouter } from './http/routes/jobs.routes';
+import { publicApiRateLimit, publicCheckoutRateLimit } from './http/middleware/publicRateLimit';
 import { createSandboxRouter } from './http/routes/sandbox.routes';
+import { createP2ServicesRouter } from './http/routes/p2Services.routes';
 import { InMemoryLedgerStore, PrismaLedgerStore } from './payments/ledgerStore';
 import type { LedgerStore } from './payments/ledgerStore';
 import {
@@ -140,10 +143,15 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use(
     '/api/v1/public/checkout',
+    publicCheckoutRateLimit,
     createPublicCheckoutRouter(resolvePaymentGateway, checkoutSessionStore, ledgerStore),
   );
 
-  app.use('/api/v1/public', createPublicPaymentLinksRouter(paymentLinkStore, catalogProductStore));
+  app.use(
+    '/api/v1/public',
+    publicApiRateLimit,
+    createPublicPaymentLinksRouter(paymentLinkStore, catalogProductStore),
+  );
 
   app.use('/api/v1/merchant/auth', createMerchantAuthRouter());
 
@@ -152,6 +160,8 @@ export function createApp(options: CreateAppOptions = {}) {
     requireAdminApiToken,
     createAdminCredentialsRouter(credentialRepository),
   );
+
+  app.use('/api/v1/admin/merchants', requireAdminApiToken, createAdminMerchantsRouter());
 
   app.use(
     '/api/v1/payments',
@@ -193,13 +203,19 @@ export function createApp(options: CreateAppOptions = {}) {
     createMerchantIntegrationsRouter(),
   );
 
+  app.use('/api/v1/services', requireDashboardAuth, createP2ServicesRouter());
+
   app.use(
     '/api/v1/merchant',
     requireMerchantApiKey,
     createMerchantRouter(catalogProductStore, paymentLinkStore),
   );
 
-  app.use('/api/v1/jobs', requireInternalOrAdminToken, createJobsRouter(outboundWebhookService));
+  app.use(
+    '/api/v1/jobs',
+    requireInternalOrAdminToken,
+    createJobsRouter(outboundWebhookService, subscriptionStore, resolvePaymentGateway),
+  );
 
   app.use(
     '/api/v1/sandbox',

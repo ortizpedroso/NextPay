@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Transaction, NEXTPAY_ACCOUNT } from '../data/mockData';
+import { Transaction } from '../data/mockData';
+import type { MerchantProfileDto } from '../lib/api/merchantProfile';
+import { formatBRL } from '../lib/format';
 
 interface DashboardViewProps {
   transactions: Transaction[];
   availableBalance: number;
+  merchantProfile: MerchantProfileDto | null;
   metrics?: {
     ledgerTransactionCount: number;
     activePaymentLinks: number;
@@ -21,6 +24,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   transactions,
   availableBalance,
   metrics,
+  merchantProfile,
   onOpenWithdraw,
   onOpenReceipt,
   onOpenQrPix,
@@ -76,9 +80,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
               </div>
               <p className="font-body-md text-body-md text-on-surface mt-0.5 truncate">
-                <strong>R$ 4.250,00</strong> transferidos com sucesso para a conta{' '}
-                <strong>{NEXTPAY_ACCOUNT.account}</strong> (Ag {NEXTPAY_ACCOUNT.agency} •{' '}
-                {NEXTPAY_ACCOUNT.email}) hoje às 08:30.
+                Saldo disponível:{' '}
+                <strong>
+                  R$ {availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </strong>
+                {merchantProfile?.email ? (
+                  <>
+                    {' '}
+                    • titular <strong>{merchantProfile.email}</strong>
+                  </>
+                ) : null}
               </p>
             </div>
           </div>
@@ -152,7 +163,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     R$
                   </span>
                   <span className="font-numeric-lg text-numeric-lg text-secondary font-bold tracking-tight">
-                    {NEXTPAY_ACCOUNT.gatewayProfitMonthFormatted}
+                    {formatBRL(Math.round((merchantProfile?.grossVolumeCents ?? 0) * 0.01))}
                   </span>
                 </div>
                 <p className="font-body-sm text-body-sm text-on-surface-variant mt-1 flex items-center gap-1">
