@@ -18,6 +18,7 @@ import {
   resolveProcessorBaseUrl,
 } from '../../infra/processor-primary/internal-http.client';
 import type { InternalWebhookEnvelope } from '../../infra/processor-primary/internal-http.types';
+import { resolveProcessorSplit } from '../../config/splitConfig';
 import type { CorrelationStore } from '../../payments/correlationStore';
 
 const NEUTRAL_ID_PREFIX = 'np';
@@ -91,9 +92,6 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
     const customerExternalId =
       this.externalIdsByNeutralId.get(parsed.customerId) ?? parsed.customerId;
 
-    const splitWalletId =
-      parsed.splitWalletId?.trim() || process.env.NEXTPAY_WALLET_ID?.trim() || undefined;
-
     const paymentBody: Record<string, unknown> = {
       customer: customerExternalId,
       billingType: mapMethodToBillingType(parsed.method),
@@ -104,8 +102,12 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
       installmentCount: parsed.installmentCount,
     };
 
-    if (splitWalletId) {
-      paymentBody.split = [{ walletId: splitWalletId, fixedValue: null, percentualValue: null }];
+    const split = resolveProcessorSplit({
+      splitWalletId: parsed.splitWalletId,
+      amountCents: parsed.amountCents,
+    });
+    if (split) {
+      paymentBody.split = split;
     }
 
     const raw = await this.http.createPayment(paymentBody);

@@ -50,6 +50,8 @@ import type { OutboundWebhookService } from './payments/outboundWebhookService';
 import { PrismaMerchantCustomerStore } from './payments/prismaMerchantCustomerStore';
 import { PrismaWebhookEventStore } from './payments/webhookEventStore';
 import type { WebhookEventStore } from './payments/webhookEventStore';
+import { resolveDefaultGatewayEnvironment } from './config/gatewayEnvironment';
+import { PrismaIdempotencyStore } from './payments/prismaIdempotencyStore';
 import { FixtureCredentialRepository } from './vault/fixtureCredentialRepository';
 import { ProcessorCredentialVaultService } from './vault/processorCredentialVault';
 import { PrismaProcessorCredentialRepository } from './vault/prismaCredentialRepository';
@@ -112,7 +114,7 @@ export function createApp(options: CreateAppOptions = {}) {
 
   const paymentLinkStore = options.paymentLinkStore ?? new PrismaPaymentLinkStore(prisma);
 
-  const idempotencyStore = options.idempotencyStore;
+  const idempotencyStore = options.idempotencyStore ?? new PrismaIdempotencyStore(prisma);
 
   app.get('/api/v1/health', (_req, res) => {
     res.json({
@@ -169,12 +171,14 @@ export function createApp(options: CreateAppOptions = {}) {
     createMerchantRouter(catalogProductStore, paymentLinkStore),
   );
 
+  const webhookGatewayEnvironment = resolveDefaultGatewayEnvironment();
+
   app.use(
     '/api/v1/webhooks',
     createWebhooksRouter(
       resolvePaymentGateway,
       webhookEventStore,
-      'SANDBOX',
+      webhookGatewayEnvironment,
       checkoutSessionStore,
       ledgerStore,
       outboundWebhookService,
