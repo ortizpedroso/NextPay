@@ -38,6 +38,42 @@ export async function fetchMerchantApiKeys(): Promise<MerchantApiKeySummaryDto[]
   return json.apiKeys;
 }
 
+export async function connectMerchantIntegration(
+  platform: IntegrationPlatform,
+): Promise<IntegrationStatusDto> {
+  const response = await fetch(
+    `/api/v1/merchant/integrations/${encodeURIComponent(platform)}/connect`,
+    {
+      method: 'POST',
+      headers: dashboardAuthHeaders(),
+    },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? 'Falha ao conectar integração.');
+  }
+  const json = (await response.json()) as { integration: IntegrationStatusDto };
+  return json.integration;
+}
+
+export async function disconnectMerchantIntegration(
+  platform: IntegrationPlatform,
+): Promise<IntegrationStatusDto> {
+  const response = await fetch(
+    `/api/v1/merchant/integrations/${encodeURIComponent(platform)}/disconnect`,
+    {
+      method: 'POST',
+      headers: dashboardAuthHeaders(),
+    },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? 'Falha ao desconectar integração.');
+  }
+  const json = (await response.json()) as { integration: IntegrationStatusDto };
+  return json.integration;
+}
+
 export async function rotateMerchantApiKey(): Promise<{
   apiKey: string;
   keyPublicId: string;

@@ -1,8 +1,13 @@
 import { Router } from 'express';
+import { z } from 'zod';
 
 import { prisma } from '../../db/prisma';
 import type { DashboardRequest } from '../../merchant/merchantScope';
-import { getDefaultMerchantDbId, resolveMerchantDbIdForRead } from '../../merchant/merchantScope';
+import {
+  getDefaultMerchantDbId,
+  resolveMerchantDbIdForRead,
+  resolveMerchantDbIdForWrite,
+} from '../../merchant/merchantScope';
 
 export const INTEGRATION_PLATFORMS = ['woocommerce', 'shopify', 'nuvemshop'] as const;
 export type IntegrationPlatform = (typeof INTEGRATION_PLATFORMS)[number];
@@ -60,6 +65,68 @@ export function createMerchantIntegrationsRouter(): Router {
           })),
         });
       }
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  const platformSchema = z.enum(INTEGRATION_PLATFORMS);
+
+  router.post('/:platform/connect', async (req, res, next) => {
+    try {
+      const platform = platformSchema.parse(req.params.platform);
+      const merchantDbId = await resolveMerchantDbIdForWrite(req as DashboardRequest);
+      const row = await prisma.merchantIntegration.upsert({
+        where: { merchantId_platform: { merchantId: merchantDbId, platform } },
+        create: {
+          merchantId: merchantDbId,
+          platform,
+          status: 'CONNECTED',
+          connectedAt: new Date(),
+        },
+        update: {
+          status: 'CONNECTED',
+          connectedAt: new Date(),
+        },
+      });
+      res.json({
+        integration: {
+          platform: row.platform as IntegrationPlatform,
+          status: 'CONNECTED' as const,
+          connectedAt: row.connectedAt?.toISOString() ?? null,
+          docsPath: DOCS_BY_PLATFORM[platform as IntegrationPlatform] ?? null,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/:platform/disconnect', async (req, res, next) => {
+    try {
+      const platform = platformSchema.parse(req.params.platform);
+      const merchantDbId = await resolveMerchantDbIdForWrite(req as DashboardRequest);
+      const row = await prisma.merchantIntegration.upsert({
+        where: { merchantId_platform: { merchantId: merchantDbId, platform } },
+        create: {
+          merchantId: merchantDbId,
+          platform,
+          status: 'DISCONNECTED',
+          connectedAt: null,
+        },
+        update: {
+          status: 'DISCONNECTED',
+          connectedAt: null,
+        },
+      });
+      res.json({
+        integration: {
+          platform: row.platform as IntegrationPlatform,
+          status: 'CONNECTABLE' as const,
+          connectedAt: null,
+          docsPath: DOCS_BY_PLATFORM[platform as IntegrationPlatform] ?? null,
+        },
+      });
     } catch (error) {
       next(error);
     }

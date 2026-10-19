@@ -17,6 +17,8 @@ import {
 } from '../lib/api/adminCredentials';
 import { getAdminBearerToken } from '../lib/api/adminSession';
 import {
+  connectMerchantIntegration,
+  disconnectMerchantIntegration,
   fetchMerchantIntegrationStatus,
   type IntegrationPlatform,
   type IntegrationStatusDto,
@@ -118,6 +120,34 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
 
   const integrationByPlatform = (platform: IntegrationPlatform): IntegrationStatusDto | undefined =>
     integrations.find((row) => row.platform === platform);
+
+  const refreshIntegrations = () => {
+    void fetchMerchantIntegrationStatus()
+      .then(setIntegrations)
+      .catch(() => setIntegrations([]));
+  };
+
+  const handleIntegrationConnect = (platform: IntegrationPlatform) => {
+    void (async () => {
+      if (!hasDashboardSession()) {
+        onShowToast('Faça login para conectar integrações.');
+        return;
+      }
+      try {
+        const row = integrationByPlatform(platform);
+        if (row?.status === 'CONNECTED') {
+          await disconnectMerchantIntegration(platform);
+          onShowToast(`${platform} desconectado.`);
+        } else {
+          await connectMerchantIntegration(platform);
+          onShowToast(`${platform} conectado.`);
+        }
+        refreshIntegrations();
+      } catch (error) {
+        onShowToast(error instanceof Error ? error.message : 'Falha na integração.');
+      }
+    })();
+  };
 
   const integrationBadge = (platform: IntegrationPlatform) => {
     const row = integrationByPlatform(platform);
@@ -1006,11 +1036,13 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                     </button>
                     <button
                       type="button"
-                      disabled
-                      title="Em breve"
-                      className="px-space-md py-1.5 bg-surface-container text-on-surface-variant/50 rounded font-label-md text-label-md font-semibold cursor-not-allowed flex items-center gap-1"
+                      onClick={() => handleIntegrationConnect('woocommerce')}
+                      className="px-space-md py-1.5 bg-primary text-on-primary rounded font-label-md text-label-md font-semibold flex items-center gap-1"
                     >
-                      <span className="material-symbols-outlined text-[16px]">tune</span> Configurar
+                      <span className="material-symbols-outlined text-[16px]">link</span>{' '}
+                      {integrationByPlatform('woocommerce')?.status === 'CONNECTED'
+                        ? 'Desconectar'
+                        : 'Conectar'}
                     </button>
                   </div>
                 </div>
@@ -1038,11 +1070,13 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                   <div className="flex items-center gap-space-xs self-end sm:self-center">
                     <button
                       type="button"
-                      disabled
-                      title="Em breve"
-                      className="px-space-md py-1.5 bg-surface-container text-on-surface-variant/50 rounded font-label-md text-label-md font-semibold cursor-not-allowed flex items-center gap-1"
+                      onClick={() => handleIntegrationConnect('shopify')}
+                      className="px-space-md py-1.5 bg-primary text-on-primary rounded font-label-md text-label-md font-semibold flex items-center gap-1"
                     >
-                      <span className="material-symbols-outlined text-[16px]">sync_alt</span> Logs
+                      <span className="material-symbols-outlined text-[16px]">link</span>
+                      {integrationByPlatform('shopify')?.status === 'CONNECTED'
+                        ? 'Desconectar'
+                        : 'Conectar'}
                     </button>
                   </div>
                 </div>
@@ -1070,15 +1104,13 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                   <div className="flex items-center gap-space-xs self-end sm:self-center">
                     <button
                       type="button"
-                      disabled
-                      title="Em breve"
-                      className="px-space-md py-1.5 bg-surface-container-high text-on-surface-variant/60 rounded font-label-md text-label-md font-semibold cursor-not-allowed flex items-center gap-1"
+                      onClick={() => handleIntegrationConnect('nuvemshop')}
+                      className="px-space-md py-1.5 bg-primary text-on-primary rounded font-label-md text-label-md font-semibold flex items-center gap-1"
                     >
-                      <span className="material-symbols-outlined text-[16px]">bolt</span> Conectar
-                      com 1 Clique
-                      <span className="text-[9px] uppercase px-1 rounded bg-surface-container-highest text-outline font-semibold">
-                        Em breve
-                      </span>
+                      <span className="material-symbols-outlined text-[16px]">bolt</span>
+                      {integrationByPlatform('nuvemshop')?.status === 'CONNECTED'
+                        ? 'Desconectar'
+                        : 'Conectar'}
                     </button>
                   </div>
                 </div>

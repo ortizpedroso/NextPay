@@ -104,5 +104,48 @@ export function createWebhooksRouter(
     }
   });
 
+  router.post('/inbound/woocommerce', async (req, res, next) => {
+    try {
+      const configuredSecret = process.env.WEBHOOK_INBOUND_SECRET?.trim();
+      if (!configuredSecret) {
+        res
+          .status(503)
+          .json({ error: 'Webhook inbound não configurado.', code: 'WEBHOOK_DISABLED' });
+        return;
+      }
+
+      const provided = req.header('x-nextpay-webhook-token')?.trim();
+      if (!provided || provided !== configuredSecret) {
+        res.status(401).json({ error: 'Não autorizado.', code: 'UNAUTHORIZED' });
+        return;
+      }
+
+      const orderId = String((req.body as { orderId?: unknown })?.orderId ?? 'unknown');
+      const eventType = String((req.body as { eventType?: unknown })?.eventType ?? 'order.updated');
+      const fingerprint = `woo:${orderId}:${eventType}`;
+
+      if (await webhookEventStore.hasProcessed(fingerprint)) {
+        res.status(200).json({ status: 'duplicate_ignored', orderId, eventType, stub: true });
+        return;
+      }
+
+      await webhookEventStore.markProcessed({
+        fingerprint,
+        eventType: `woocommerce.${eventType}`,
+        payloadJson: JSON.stringify(req.body),
+      });
+
+      res.status(200).json({
+        status: 'accepted',
+        stub: true,
+        orderId,
+        eventType,
+        message: 'Webhook WooCommerce recebido (stub). Nenhuma sincronização de pedido executada.',
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   return router;
 }
