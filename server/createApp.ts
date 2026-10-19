@@ -53,6 +53,7 @@ import { createMerchantIntegrationsRouter } from './http/routes/merchantIntegrat
 import { createJobsRouter } from './http/routes/jobs.routes';
 import { publicApiRateLimit, publicCheckoutRateLimit } from './http/middleware/publicRateLimit';
 import { createSandboxRouter } from './http/routes/sandbox.routes';
+import { createP2ServicesRouter } from './http/routes/p2Services.routes';
 import { InMemoryLedgerStore, PrismaLedgerStore } from './payments/ledgerStore';
 import type { LedgerStore } from './payments/ledgerStore';
 import {
@@ -201,6 +202,8 @@ export function createApp(options: CreateAppOptions = {}) {
     requireDashboardAuth,
     createMerchantIntegrationsRouter(),
   );
+
+  app.use('/api/v1/services', requireDashboardAuth, createP2ServicesRouter());
 
   app.use(
     '/api/v1/merchant',

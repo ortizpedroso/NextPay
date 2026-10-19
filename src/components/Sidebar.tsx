@@ -40,15 +40,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'pix', label: 'Pix Instantâneo', icon: 'qr_code_2' },
     { id: 'produtos-e-servicos', label: 'Produtos & Serviços', icon: 'inventory_2' },
     { id: 'assinaturas', label: 'Assinaturas (Recorrência)', icon: 'autorenew' },
-    { id: 'vendas-fisicas', label: 'Vendas Físicas (Tap)', icon: 'contactless', disabled: true },
+    { id: 'vendas-fisicas', label: 'Vendas Físicas (Tap)', icon: 'contactless' },
   ];
 
   const financialNav: NavItem[] = [
-    { id: 'antecipacoes', label: 'Antecipações', icon: 'bolt', disabled: true },
+    { id: 'antecipacoes', label: 'Antecipações', icon: 'bolt' },
     { id: 'cartao-nextpay', label: 'Cartão NextPay', icon: 'credit_card', disabled: true },
     { id: 'pague-contas', label: 'Pague Contas', icon: 'barcode_scanner', disabled: true },
     { id: 'recarga-celular', label: 'Recarga de Celular', icon: 'smartphone', disabled: true },
-    { id: 'notas-fiscais', label: 'Notas Fiscais', icon: 'description', disabled: true },
+    { id: 'notas-fiscais', label: 'Notas Fiscais', icon: 'description' },
     {
       id: 'serasa',
       label: 'Consulta Serasa & Negativação',

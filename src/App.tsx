@@ -43,6 +43,9 @@ import { isDemoMode } from './lib/demoMode';
 import { fetchMerchantProfile, type MerchantProfileDto } from './lib/api/merchantProfile';
 import { HostedCardView } from './views/HostedCardView';
 import { SimularVendaView } from './views/SimularVendaView';
+import { AntecipacaoView } from './views/AntecipacaoView';
+import { TapVendasView } from './views/TapVendasView';
+import { NotasFiscaisView } from './views/NotasFiscaisView';
 
 export default function App() {
   const [hostedCardToken, setHostedCardToken] = useState<string | null>(null);
@@ -475,6 +478,12 @@ export default function App() {
               )}
 
               {currentView === 'simular-venda' && <SimularVendaView onShowToast={showToast} />}
+
+              {currentView === 'antecipacoes' && <AntecipacaoView onShowToast={showToast} />}
+
+              {currentView === 'vendas-fisicas' && <TapVendasView onShowToast={showToast} />}
+
+              {currentView === 'notas-fiscais' && <NotasFiscaisView onShowToast={showToast} />}
 
               {(currentView === 'integracoes-e-api' ||
                 currentView === 'configuracoes-de-taxas') && (
