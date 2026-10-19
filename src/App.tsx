@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { DashboardView } from './views/DashboardView';
@@ -19,13 +19,25 @@ import { WithdrawModal } from './components/modals/WithdrawModal';
 import { ReceiptModal } from './components/modals/ReceiptModal';
 import { NewChargeModal } from './components/modals/NewChargeModal';
 import {
+  INITIAL_CLIENTS,
   INITIAL_PRODUCTS,
   INITIAL_PAYMENT_LINKS,
   INITIAL_TRANSACTIONS,
   ProductItem,
   PaymentLink,
   Transaction,
+  type ClientRow,
 } from './data/mockData';
+import {
+  fetchLedgerTransactions,
+  fetchMerchantCustomers,
+} from './lib/api/adminOperations';
+import {
+  ledgerRowToTransaction,
+  merchantCustomerToClientRow,
+  sumAvailableBalanceCents,
+} from './lib/api/ledgerMappers';
+import { getAdminBearerToken } from './lib/api/adminSession';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<string>('dashboard');
@@ -35,7 +47,35 @@ export default function App() {
   const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
   const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>(INITIAL_PAYMENT_LINKS);
   const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  const [clients, setClients] = useState<ClientRow[]>(INITIAL_CLIENTS);
   const [availableBalance, setAvailableBalance] = useState(48920.5);
+
+  const refreshFromApi = useCallback(async () => {
+    if (!getAdminBearerToken()) {
+      return;
+    }
+    const [ledgerRows, customerRows] = await Promise.all([
+      fetchLedgerTransactions(),
+      fetchMerchantCustomers(),
+    ]);
+    if (ledgerRows.length > 0) {
+      setTransactions(ledgerRows.map(ledgerRowToTransaction));
+      setAvailableBalance(sumAvailableBalanceCents(ledgerRows) / 100);
+    }
+    if (customerRows.length > 0) {
+      setClients(customerRows.map(merchantCustomerToClientRow));
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshFromApi();
+  }, [refreshFromApi]);
+
+  useEffect(() => {
+    if (currentView === 'dashboard' || currentView === 'clientes') {
+      void refreshFromApi();
+    }
+  }, [currentView, refreshFromApi]);
 
   // Active item for checkout simulation
   const [checkoutItem, setCheckoutItem] = useState<ProductItem | PaymentLink | null>(null);
@@ -128,6 +168,7 @@ export default function App() {
     if (charge.method === 'Pix') {
       setAvailableBalance((prev) => prev + net);
     }
+    void refreshFromApi();
   };
 
   const handleConfirmWithdraw = (amount: number) => {
@@ -217,6 +258,7 @@ export default function App() {
 
               {currentView === 'clientes' && (
                 <ClientsView
+                  clients={clients}
                   onShowToast={showToast}
                   onOpenNewChargeForClient={(_clientName) => {
                     setIsNewChargeModalOpen(true);

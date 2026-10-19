@@ -46,29 +46,37 @@ export async function requestWithdrawal(input: {
   return (await response.json()) as { protocol: string; status: string };
 }
 
-export async function fetchLedgerTransactions(): Promise<
-  Array<{
-    neutralPaymentId: string;
-    amountCents: number;
-    status: string;
-    method: string;
-    description: string;
-    customerName?: string | null;
-  }>
-> {
+export type LedgerTransactionDto = {
+  neutralPaymentId: string;
+  amountCents: number;
+  netAmountCents?: number | null;
+  status: string;
+  method: string;
+  description: string;
+  customerName?: string | null;
+};
+
+export async function fetchLedgerTransactions(): Promise<LedgerTransactionDto[]> {
   const response = await fetch('/api/v1/transactions', { headers: adminHeaders() });
   if (!response.ok) {
     return [];
   }
-  const json = (await response.json()) as {
-    transactions: Array<{
-      neutralPaymentId: string;
-      amountCents: number;
-      status: string;
-      method: string;
-      description: string;
-      customerName?: string | null;
-    }>;
-  };
+  const json = (await response.json()) as { transactions: LedgerTransactionDto[] };
   return json.transactions;
+}
+
+export type MerchantCustomerDto = {
+  neutralCustomerId: string;
+  name: string;
+  email: string;
+  document: string;
+};
+
+export async function fetchMerchantCustomers(): Promise<MerchantCustomerDto[]> {
+  const response = await fetch('/api/v1/customers', { headers: adminHeaders() });
+  if (!response.ok) {
+    return [];
+  }
+  const json = (await response.json()) as { customers: MerchantCustomerDto[] };
+  return json.customers;
 }

@@ -438,7 +438,19 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
   },
 ];
 
-export const INITIAL_CLIENTS = [
+export type ClientRow = {
+  id: string;
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  phone: string;
+  totalBilled: string;
+  chargesCount: number;
+  status: string;
+  city: string;
+};
+
+export const INITIAL_CLIENTS: ClientRow[] = [
   {
     id: 'cli-1',
     name: 'Ana Clara Rezende',
