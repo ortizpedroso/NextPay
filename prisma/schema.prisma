@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Ambiente operacional das credenciais do processador subjacente (uso exclusivo servidor).
+enum GatewayEnvironment {
+  SANDBOX
+  PRODUCTION
+}
+
+/// Vault criptografado de credenciais da plataforma NextPay (nunca expor plaintext ao cliente).
+model ProcessorCredentialVault {
+  id              String             @id @default(cuid())
+  environment     GatewayEnvironment @unique
+  /// Payload AES-256-GCM serializado (JSON: v, iv, tag, ct).
+  ciphertext      String             @db.Text
+  /// Prefixo exibido na UI mascarada (ex.: sk_live, sk_test).
+  prefixHint      String             @db.VarChar(32)
+  /// Últimos 4 caracteres do segredo (somente para máscara).
+  suffixHint      String             @db.VarChar(8)
+  /// Incrementado a cada rotação/regravação do segredo.
+  rotationVersion Int                @default(1)
+  lastValidatedAt DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+/// Chaves de idempotência para operações de pagamento (evita duplicidade em retries/webhooks).
+model PaymentIdempotencyKey {
+  id             String   @id @default(cuid())
+  idempotencyKey String   @unique @db.VarChar(128)
+  operation      String   @db.VarChar(64)
+  requestHash    String   @db.VarChar(128)
+  responseJson   String   @db.Text
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+
+  @@index([expiresAt])
+}
