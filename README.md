@@ -49,16 +49,28 @@ cp .env.example .env
 
 ### 3. Executar em Modo de Desenvolvimento
 
+Em dois terminais (frontend Vite + API Express):
+
 ```bash
+npm run dev:api
 npm run dev
 ```
 
-O servidor iniciará em `http://localhost:3000`.
+O painel ficará em `http://localhost:3000` (proxy `/api` → API na porta `3001`).
 
-### 4. Compilar para Produção
+### 4. Compilar e Executar em Produção
 
 ```bash
 npm run build
+npm start
+```
+
+Com `NODE_ENV=production`, o Express serve o SPA em `dist/` na mesma porta (`PORT`, padrão `3001`).
+
+### 5. Banco de Dados (PostgreSQL)
+
+```bash
+npx prisma migrate deploy
 ```
 
 ---
@@ -67,21 +79,23 @@ npm run build
 
 As seguintes variáveis de ambiente são utilizadas pelo NextPay:
 
-| Variável                  | Descrição                                                                |
-| :------------------------ | :----------------------------------------------------------------------- |
-| `PORT`                    | Porta onde o servidor Express escuta conexões (padrão: 3000)             |
-| `APP_URL`                 | URL base pública da aplicação                                            |
-| `DATABASE_URL`            | String de conexão com o banco de dados PostgreSQL principal              |
-| `DATABASE_URL_TEST`       | String de conexão com o banco PostgreSQL exclusivo para testes           |
-| `ASAAS_API_KEY`           | Chave de API da conta raiz NextPay no Asaas (somente servidor)           |
-| `ASAAS_ENV`               | Ambiente do Asaas (`sandbox` ou `production`)                            |
-| `ASAAS_WEBHOOK_TOKEN`     | Token de validação de autenticidade dos webhooks do Asaas                |
-| `JWT_SECRET`              | Chave secreta para assinatura de tokens JWT (sessão do lojista)          |
-| `MERCHANT_LOGIN_EMAIL`    | E-mail do lojista para login JWT no painel                               |
-| `MERCHANT_LOGIN_PASSWORD` | Senha do lojista (somente servidor)                                      |
-| `PAYMENT_GATEWAY_MODE`    | `fixture` / `in_memory` força adaptador simulado (sem processadora real) |
-| `ENCRYPTION_KEY`          | Chave de criptografia simétrica para chaves de API das subcontas         |
-| `NEXTPAY_WALLET_ID`       | Identificador da carteira da conta raiz NextPay para split de comissões  |
+| Variável                     | Descrição                                                                 |
+| :--------------------------- | :------------------------------------------------------------------------ |
+| `PORT`                       | Porta do servidor Express (padrão: `3001`)                                |
+| `APP_URL`                    | URL pública do painel (CORS)                                              |
+| `DATABASE_URL`               | PostgreSQL principal                                                      |
+| `DATABASE_URL_TEST`          | PostgreSQL para testes locais                                             |
+| `PAYMENT_GATEWAY_MODE`       | `fixture` / `in_memory` = adaptador simulado (não exige vault)            |
+| `MASTER_ENCRYPTION_KEY`      | 32 bytes (Base64/hex) para vault de credenciais; omita em modo `fixture`  |
+| `PROCESSOR_API_BASE_URL_*`   | Base URL HTTP do processador primário (sandbox/produção)                  |
+| `JWT_SECRET`                 | Assinatura JWT do lojista                                                 |
+| `MERCHANT_LOGIN_EMAIL`       | E-mail de login do painel                                                 |
+| `MERCHANT_LOGIN_PASSWORD`    | Senha de login (somente servidor)                                         |
+| `ADMIN_API_TOKEN`            | Bearer legado para rotas administrativas                                  |
+| `WEBHOOK_INBOUND_SECRET`     | Token `x-nextpay-webhook-token` nos webhooks inbound                      |
+| `ASAAS_ENV`                  | `sandbox` ou `production` (ambiente padrão de webhooks/gateway)           |
+| `NEXTPAY_WALLET_ID`          | Carteira NextPay para split de comissão                                   |
+| `NEXTPAY_SPLIT_PERCENT`      | Percentual do split para a carteira NextPay (padrão `1`)                  |
 
 > **Nota de Segurança**: Chaves de API e segredos só existem no servidor e são lidos via `process.env`. Nenhuma credencial é exposta ao navegador.
 

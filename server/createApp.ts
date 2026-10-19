@@ -50,6 +50,7 @@ import type { OutboundWebhookService } from './payments/outboundWebhookService';
 import { PrismaMerchantCustomerStore } from './payments/prismaMerchantCustomerStore';
 import { PrismaWebhookEventStore } from './payments/webhookEventStore';
 import type { WebhookEventStore } from './payments/webhookEventStore';
+import { FixtureCredentialRepository } from './vault/fixtureCredentialRepository';
 import { ProcessorCredentialVaultService } from './vault/processorCredentialVault';
 import { PrismaProcessorCredentialRepository } from './vault/prismaCredentialRepository';
 
@@ -88,11 +89,7 @@ export function createApp(options: CreateAppOptions = {}) {
   app.use(express.json({ limit: '256kb' }));
 
   const credentialRepository =
-    options.credentialRepository ??
-    new PrismaProcessorCredentialRepository(
-      prisma,
-      ProcessorCredentialVaultService.fromEnvironment(),
-    );
+    options.credentialRepository ?? buildDefaultCredentialRepository();
 
   const resolvePaymentGateway: PaymentGatewayResolver =
     options.resolvePaymentGateway ??
@@ -189,6 +186,17 @@ export function createApp(options: CreateAppOptions = {}) {
   app.use(errorHandler);
 
   return app;
+}
+
+function buildDefaultCredentialRepository(): CredentialRepositoryPort {
+  const mode = process.env.PAYMENT_GATEWAY_MODE?.trim().toLowerCase();
+  if (mode === 'fixture' || mode === 'in_memory') {
+    return new FixtureCredentialRepository();
+  }
+  return new PrismaProcessorCredentialRepository(
+    prisma,
+    ProcessorCredentialVaultService.fromEnvironment(),
+  );
 }
 
 // exported for tests defaults
