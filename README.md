@@ -75,6 +75,13 @@ Suba o Postgres local (opcional):
 docker compose up -d
 ```
 
+Teste automatizado (Postgres + migrate + testes + health da API):
+
+```bash
+chmod +x scripts/docker-local-test.sh
+./scripts/docker-local-test.sh
+```
+
 Configure `DATABASE_URL=postgresql://nextpay:nextpay_local@localhost:5432/nextpay?schema=public` no `.env`, depois:
 
 ```bash
