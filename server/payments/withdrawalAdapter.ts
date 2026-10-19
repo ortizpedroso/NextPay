@@ -37,9 +37,7 @@ export class ProductionWithdrawalAdapter implements WithdrawalAdapter {
   }
 }
 
-export function resolveWithdrawalAdapter(
-  env: NodeJS.ProcessEnv = process.env,
-): WithdrawalAdapter {
+export function resolveWithdrawalAdapter(env: NodeJS.ProcessEnv = process.env): WithdrawalAdapter {
   const mode = env.PAYMENT_GATEWAY_MODE?.trim().toLowerCase();
   if (mode === 'fixture' || mode === 'in_memory') {
     return new FixtureWithdrawalAdapter();

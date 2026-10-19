@@ -25,7 +25,8 @@ export const Header: React.FC<HeaderProps> = ({
   merchantProfile,
   onSessionChanged,
 }) => {
-  const profileEmail = merchantProfile?.email ?? (isDemoMode() ? NEXTPAY_ACCOUNT.email : 'Faça login');
+  const profileEmail =
+    merchantProfile?.email ?? (isDemoMode() ? NEXTPAY_ACCOUNT.email : 'Faça login');
   const profileName =
     merchantProfile?.displayName ?? (isDemoMode() ? NEXTPAY_ACCOUNT.ownerName : 'Painel NextPay');
   const [showOrgDropdown, setShowOrgDropdown] = useState(false);
@@ -236,7 +237,9 @@ export const Header: React.FC<HeaderProps> = ({
                 </p>
                 <p className="font-body-sm text-[11px] text-on-surface-variant">{profileEmail}</p>
                 {merchantProfile?.merchantId ? (
-                  <p className="text-[10px] text-outline font-mono mt-1">{merchantProfile.merchantId}</p>
+                  <p className="text-[10px] text-outline font-mono mt-1">
+                    {merchantProfile.merchantId}
+                  </p>
                 ) : null}
               </div>
               <div className="py-1">

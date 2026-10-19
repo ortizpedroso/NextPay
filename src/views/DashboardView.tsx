@@ -82,8 +82,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <p className="font-body-md text-body-md text-on-surface mt-0.5 truncate">
                 Saldo disponível:{' '}
                 <strong>
-                  R${' '}
-                  {availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </strong>
                 {merchantProfile?.email ? (
                   <>

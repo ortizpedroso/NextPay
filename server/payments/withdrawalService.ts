@@ -14,11 +14,10 @@ function newProtocol(): string {
   return `wd_${Date.now().toString(36)}_${randomBytes(3).toString('hex')}`;
 }
 
-function advanceFixtureStatus(row: {
-  status: string;
-  createdAt: Date;
+function advanceFixtureStatus(row: { status: string; createdAt: Date; message: string }): {
+  status: WithdrawalStatus;
   message: string;
-}): { status: WithdrawalStatus; message: string } {
+} {
   const ageMs = Date.now() - row.createdAt.getTime();
   let status = row.status as WithdrawalStatus;
   let message = row.message;
@@ -44,7 +43,9 @@ function mapPrismaRow(row: {
 }): WithdrawalRecord {
   const mode = process.env.PAYMENT_GATEWAY_MODE?.trim().toLowerCase();
   const isFixture = mode === 'fixture' || mode === 'in_memory';
-  const advanced = isFixture ? advanceFixtureStatus(row) : { status: row.status as WithdrawalStatus, message: row.message };
+  const advanced = isFixture
+    ? advanceFixtureStatus(row)
+    : { status: row.status as WithdrawalStatus, message: row.message };
   return {
     protocol: row.protocol,
     amountCents: row.amountCents,

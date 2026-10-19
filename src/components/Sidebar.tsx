@@ -28,7 +28,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   merchantProfile,
 }) => {
   const accountEmail = merchantProfile?.email ?? (isDemoMode() ? NEXTPAY_ACCOUNT.email : '—');
-  const displayName = merchantProfile?.displayName ?? (isDemoMode() ? NEXTPAY_ACCOUNT.companyName : 'Lojista');
+  const displayName =
+    merchantProfile?.displayName ?? (isDemoMode() ? NEXTPAY_ACCOUNT.companyName : 'Lojista');
   const [showBalance, setShowBalance] = useState(true);
 
   const mainNav: NavItem[] = [
@@ -223,24 +224,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-3 border-t border-surface-container bg-surface-container-low/70 flex-shrink-0">
           <div className="flex flex-col gap-1 text-[11px]">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-on-surface truncate">
-                {accountEmail}
-              </span>
+              <span className="font-semibold text-on-surface truncate">{accountEmail}</span>
               <span className="px-1.5 py-0.2 rounded bg-secondary-container text-on-secondary-container text-[9px] font-bold">
                 Verificado
               </span>
             </div>
             <div className="text-on-surface-variant text-[10px] leading-tight">
-              <span>
-                {displayName}
-              </span>
+              <span>{displayName}</span>
             </div>
             <div className="flex items-center justify-between text-outline text-[10px]">
               <span>
                 ID: <strong>{merchantProfile?.merchantId ?? '—'}</strong>
               </span>
               <span>
-                Saldo API: <strong>R$ {availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                Saldo API:{' '}
+                <strong>
+                  R$ {availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </strong>
               </span>
             </div>
           </div>

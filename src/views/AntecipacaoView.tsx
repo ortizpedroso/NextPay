@@ -59,7 +59,9 @@ export const AntecipacaoView: React.FC<{ onShowToast: (msg: string) => void }> =
             Taxa ({quote.feePercent}%): {formatBRL(quote.feeCents)}
           </div>
           <div className="font-bold">Líquido: {formatBRL(quote.netCents)}</div>
-          <div className="text-body-sm text-outline">Prazo estimado: {quote.settlementEtaHours}h</div>
+          <div className="text-body-sm text-outline">
+            Prazo estimado: {quote.settlementEtaHours}h
+          </div>
         </div>
       ) : null}
     </div>

@@ -87,26 +87,26 @@ npx prisma migrate deploy
 
 As seguintes variáveis de ambiente são utilizadas pelo NextPay:
 
-| Variável                   | Descrição                                                                |
-| :------------------------- | :----------------------------------------------------------------------- |
-| `PORT`                     | Porta do servidor Express (padrão: `3001`)                               |
-| `APP_URL`                  | URL pública do painel (CORS)                                             |
-| `DATABASE_URL`             | PostgreSQL principal                                                     |
-| `DATABASE_URL_TEST`        | PostgreSQL para testes locais                                            |
-| `PAYMENT_GATEWAY_MODE`     | `fixture` / `in_memory` = adaptador simulado (não exige vault)           |
-| `MASTER_ENCRYPTION_KEY`    | 32 bytes (Base64/hex) para vault de credenciais; omita em modo `fixture` |
-| `PROCESSOR_API_BASE_URL_*` | Base URL HTTP do processador primário (sandbox/produção)                 |
-| `JWT_SECRET`               | Assinatura JWT do lojista                                                |
-| `MERCHANT_LOGIN_EMAIL`     | E-mail de login do painel                                                |
-| `MERCHANT_LOGIN_PASSWORD`  | Senha de login (somente servidor)                                        |
-| `ADMIN_API_TOKEN`          | Bearer legado para rotas administrativas                                 |
-| `WEBHOOK_INBOUND_SECRET`   | Token `x-nextpay-webhook-token` nos webhooks inbound                     |
-| `ASAAS_ENV`                | `sandbox` ou `production` (ambiente padrão de webhooks/gateway)          |
-| `NEXTPAY_WALLET_ID`        | Carteira NextPay para split de comissão                                  |
-| `NEXTPAY_SPLIT_PERCENT`    | Percentual do split para a carteira NextPay (padrão `1`)                 |
+| Variável                   | Descrição                                                                               |
+| :------------------------- | :-------------------------------------------------------------------------------------- |
+| `PORT`                     | Porta do servidor Express (padrão: `3001`)                                              |
+| `APP_URL`                  | URL pública do painel (CORS)                                                            |
+| `DATABASE_URL`             | PostgreSQL principal                                                                    |
+| `DATABASE_URL_TEST`        | PostgreSQL para testes locais                                                           |
+| `PAYMENT_GATEWAY_MODE`     | `fixture` / `in_memory` = adaptador simulado (não exige vault)                          |
+| `MASTER_ENCRYPTION_KEY`    | 32 bytes (Base64/hex) para vault de credenciais; omita em modo `fixture`                |
+| `PROCESSOR_API_BASE_URL_*` | Base URL HTTP do processador primário (sandbox/produção)                                |
+| `JWT_SECRET`               | Assinatura JWT do lojista                                                               |
+| `MERCHANT_LOGIN_EMAIL`     | E-mail de login do painel                                                               |
+| `MERCHANT_LOGIN_PASSWORD`  | Senha de login (somente servidor)                                                       |
+| `ADMIN_API_TOKEN`          | Bearer legado para rotas administrativas                                                |
+| `WEBHOOK_INBOUND_SECRET`   | Token `x-nextpay-webhook-token` nos webhooks inbound                                    |
+| `ASAAS_ENV`                | `sandbox` ou `production` (ambiente padrão de webhooks/gateway)                         |
+| `NEXTPAY_WALLET_ID`        | Carteira NextPay para split de comissão                                                 |
+| `NEXTPAY_SPLIT_PERCENT`    | Percentual do split para a carteira NextPay (padrão `1`)                                |
 | `INTERNAL_JOB_TOKEN`       | Bearer para jobs internos (`process-outbound-retries`, `process-subscription-renewals`) |
-| `MERCHANT_WEBHOOK_URL`     | Destino dos webhooks outbound enfileirados pelo ledger                   |
-| `VITE_DEMO_MODE`           | `false` em produção: desliga fallbacks locais do painel sem login        |
+| `MERCHANT_WEBHOOK_URL`     | Destino dos webhooks outbound enfileirados pelo ledger                                  |
+| `VITE_DEMO_MODE`           | `false` em produção: desliga fallbacks locais do painel sem login                       |
 
 > **Nota de Segurança**: Chaves de API e segredos só existem no servidor e são lidos via `process.env`. Nenhuma credencial é exposta ao navegador.
 

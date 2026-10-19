@@ -3,7 +3,9 @@ import React, { useState } from 'react';
 import { hasDashboardSession } from '../lib/api/dashboardAuth';
 import { registerTapDevice } from '../lib/api/p2Services';
 
-export const TapVendasView: React.FC<{ onShowToast: (msg: string) => void }> = ({ onShowToast }) => {
+export const TapVendasView: React.FC<{ onShowToast: (msg: string) => void }> = ({
+  onShowToast,
+}) => {
   const [label, setLabel] = useState('Terminal Loja 01');
   const [serial, setSerial] = useState('');
   const [lastDeviceId, setLastDeviceId] = useState<string | null>(null);
@@ -50,9 +52,7 @@ export const TapVendasView: React.FC<{ onShowToast: (msg: string) => void }> = (
       >
         Registrar dispositivo
       </button>
-      {lastDeviceId ? (
-        <p className="text-body-sm font-mono">Último ID: {lastDeviceId}</p>
-      ) : null}
+      {lastDeviceId ? <p className="text-body-sm font-mono">Último ID: {lastDeviceId}</p> : null}
     </div>
   );
 };

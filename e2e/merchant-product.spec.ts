@@ -11,7 +11,7 @@ test('demo mode: cadastra produto no painel (sem checkout)', async ({ page }) =>
     .fill('Criado em teste automatizado');
   await page.getByRole('button', { name: 'Salvar e Gerar Link' }).click();
 
-  await expect(
-    page.getByRole('heading', { name: 'Produto E2E Playwright' }),
-  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('heading', { name: 'Produto E2E Playwright' })).toBeVisible({
+    timeout: 15_000,
+  });
 });

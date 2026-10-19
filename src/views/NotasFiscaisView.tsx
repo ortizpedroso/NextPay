@@ -15,7 +15,9 @@ export const NotasFiscaisView: React.FC<{ onShowToast: (msg: string) => void }> 
   return (
     <div className="p-space-lg max-w-3xl mx-auto space-y-space-md">
       <h1 className="font-headline-lg text-headline-lg">Notas fiscais</h1>
-      <p className="text-on-surface-variant">Solicitação de emissão (stub). NF-e real exige provedor fiscal.</p>
+      <p className="text-on-surface-variant">
+        Solicitação de emissão (stub). NF-e real exige provedor fiscal.
+      </p>
       <input
         className="w-full px-3 py-2 rounded-lg border border-surface-container"
         placeholder="Cliente"

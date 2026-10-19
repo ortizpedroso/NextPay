@@ -2,7 +2,10 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import type { DashboardRequest } from '../../merchant/merchantScope';
-import { resolveMerchantDbIdForRead, resolveMerchantDbIdForWrite } from '../../merchant/merchantScope';
+import {
+  resolveMerchantDbIdForRead,
+  resolveMerchantDbIdForWrite,
+} from '../../merchant/merchantScope';
 import {
   createWithdrawalRequest,
   getWithdrawalRequest,
