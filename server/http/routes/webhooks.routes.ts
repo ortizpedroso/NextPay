@@ -9,6 +9,7 @@ import type { OutboundWebhookService } from '../../payments/outboundWebhookServi
 import type { PaymentGatewayResolver } from './payments.routes';
 import type { CatalogProductStore } from './products.routes';
 import type { PaymentLinkStore } from './paymentLinks.routes';
+import { resolveInboundWebhookSecrets, verifyInboundWebhookAuth } from '../webhookInboundAuth';
 
 const CONFIRMED_STATUSES = new Set(['RECEIVED', 'CONFIRMED']);
 
@@ -26,16 +27,14 @@ export function createWebhooksRouter(
 
   router.post('/inbound', async (req, res, next) => {
     try {
-      const configuredSecret = process.env.WEBHOOK_INBOUND_SECRET?.trim();
-      if (!configuredSecret) {
+      if (resolveInboundWebhookSecrets().length === 0) {
         res
           .status(503)
           .json({ error: 'Webhook inbound não configurado.', code: 'WEBHOOK_DISABLED' });
         return;
       }
 
-      const provided = req.header('x-nextpay-webhook-token')?.trim();
-      if (!provided || provided !== configuredSecret) {
+      if (!verifyInboundWebhookAuth(req.headers)) {
         res.status(401).json({ error: 'Não autorizado.', code: 'UNAUTHORIZED' });
         return;
       }
@@ -106,16 +105,14 @@ export function createWebhooksRouter(
 
   router.post('/inbound/woocommerce', async (req, res, next) => {
     try {
-      const configuredSecret = process.env.WEBHOOK_INBOUND_SECRET?.trim();
-      if (!configuredSecret) {
+      if (resolveInboundWebhookSecrets().length === 0) {
         res
           .status(503)
           .json({ error: 'Webhook inbound não configurado.', code: 'WEBHOOK_DISABLED' });
         return;
       }
 
-      const provided = req.header('x-nextpay-webhook-token')?.trim();
-      if (!provided || provided !== configuredSecret) {
+      if (!verifyInboundWebhookAuth(req.headers)) {
         res.status(401).json({ error: 'Não autorizado.', code: 'UNAUTHORIZED' });
         return;
       }

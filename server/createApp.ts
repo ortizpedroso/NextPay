@@ -99,6 +99,7 @@ export function createApp(options: CreateAppOptions = {}) {
         'Content-Type',
         'Authorization',
         'X-NextPay-Webhook-Token',
+        'Asaas-Access-Token',
         'X-NextPay-Merchant-Key',
       ],
     }),

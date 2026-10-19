@@ -6,6 +6,10 @@ const REQUIRED_KEY_BYTES = 32;
  * Resolve a chave mestra de criptografia a partir de MASTER_ENCRYPTION_KEY.
  * Aceita Base64 (44 chars típico) ou hex (64 chars). Nunca logar o valor.
  */
+export function hasMasterEncryptionKey(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Boolean(env.MASTER_ENCRYPTION_KEY?.trim());
+}
+
 export function loadMasterEncryptionKey(env: NodeJS.ProcessEnv = process.env): Buffer {
   const raw = env.MASTER_ENCRYPTION_KEY?.trim();
   if (!raw) {

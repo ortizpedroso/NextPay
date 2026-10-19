@@ -47,6 +47,14 @@ Copie o arquivo de exemplo para criar seu `.env`:
 cp .env.example .env
 ```
 
+Para deploy na **Hostinger** com credenciais **Asaas Sandbox**, use o template comentado:
+
+```bash
+cp .env.hostinger.example .env
+```
+
+Consulte [DEPLOY.md](./DEPLOY.md) para build/start, webhooks e migrações.
+
 ### 3. Executar em Modo de Desenvolvimento
 
 Em dois terminais (frontend Vite + API Express):
