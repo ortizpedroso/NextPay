@@ -18,6 +18,7 @@ import {
   resolveProcessorBaseUrl,
 } from '../../infra/processor-primary/internal-http.client';
 import type { InternalWebhookEnvelope } from '../../infra/processor-primary/internal-http.types';
+import type { CorrelationStore } from '../../payments/correlationStore';
 
 const NEUTRAL_ID_PREFIX = 'np';
 
@@ -28,6 +29,7 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
   constructor(
     environment: 'SANDBOX' | 'PRODUCTION',
     private readonly http: ProcessorPrimaryHttpClient,
+    private readonly correlationStore?: CorrelationStore,
   ) {
     this.environment = environment;
   }
@@ -35,13 +37,14 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
   static create(
     environment: 'SANDBOX' | 'PRODUCTION',
     accessToken: string,
+    correlationStore?: CorrelationStore,
   ): PrimaryProcessorGatewayAdapter {
     const http = new ProcessorPrimaryHttpClient({
       baseUrl: resolveProcessorBaseUrl(environment),
       accessToken,
       timeoutMs: 15_000,
     });
-    return new PrimaryProcessorGatewayAdapter(environment, http);
+    return new PrimaryProcessorGatewayAdapter(environment, http, correlationStore);
   }
 
   async testConnectivity(): Promise<GatewayConnectivityResult> {
@@ -73,7 +76,7 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
     });
 
     const customerId = toNeutralId('cus', raw.externalId);
-    this.externalIdsByNeutralId.set(customerId, raw.externalId);
+    await this.persistMapping(customerId, raw.externalId, 'cus');
 
     return {
       customerId,
@@ -99,14 +102,14 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
     });
 
     const mapped = mapRawPaymentToRecord(raw);
-    this.externalIdsByNeutralId.set(mapped.paymentId, raw.externalId);
-    this.externalIdsByNeutralId.set(mapped.customerId, raw.customer);
+    await this.persistMapping(mapped.paymentId, raw.externalId, 'pay');
+    await this.persistMapping(mapped.customerId, raw.customer, 'cus');
     paymentRecordSchema.parse(mapped);
     return mapped;
   }
 
   async getPayment(paymentId: string): Promise<PaymentRecord> {
-    const externalId = this.resolveExternalId(paymentId, 'pay');
+    const externalId = await this.resolveExternalId(paymentId, 'pay');
     const raw = await this.http.getPayment(externalId);
     const mapped = mapRawPaymentToRecord(raw);
     paymentRecordSchema.parse(mapped);
@@ -114,7 +117,7 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
   }
 
   async cancelPayment(paymentId: string): Promise<PaymentRecord> {
-    const externalId = this.resolveExternalId(paymentId, 'pay');
+    const externalId = await this.resolveExternalId(paymentId, 'pay');
     const raw = await this.http.cancelPayment(externalId);
     const mapped = mapRawPaymentToRecord(raw);
     paymentRecordSchema.parse(mapped);
@@ -130,10 +133,18 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
       .digest('hex')
       .slice(0, 32);
 
+    const externalPaymentId = payment
+      ? String(
+          (payment as { id?: string; externalId?: string }).id ??
+            (payment as { externalId?: string }).externalId ??
+            '',
+        )
+      : '';
+
     return {
       eventId: fingerprint,
       eventType,
-      paymentId: payment ? toNeutralId('pay', payment.externalId) : undefined,
+      paymentId: externalPaymentId ? toNeutralId('pay', externalPaymentId) : undefined,
       amountCents: payment ? Math.round(payment.value * 100) : undefined,
       status: payment ? mapRawStatus(payment.status) : undefined,
       occurredAt: new Date().toISOString(),
@@ -141,17 +152,43 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
     };
   }
 
-  private resolveExternalId(neutralId: string, kind: 'pay' | 'cus'): string {
-    const mapped = this.externalIdsByNeutralId.get(neutralId);
-    if (mapped) {
-      return mapped;
+  private async resolveExternalId(neutralId: string, kind: 'pay' | 'cus'): Promise<string> {
+    const cached = this.externalIdsByNeutralId.get(neutralId);
+    if (cached) {
+      return cached;
     }
+
+    if (this.correlationStore) {
+      const persisted = await this.correlationStore.getExternalId(neutralId);
+      if (persisted) {
+        this.externalIdsByNeutralId.set(neutralId, persisted);
+        return persisted;
+      }
+    }
+
     if (!neutralId.startsWith(`${NEUTRAL_ID_PREFIX}_${kind}_`)) {
       throw new Error('Identificador neutro inválido.');
     }
     throw new Error(
       'Mapeamento de ID neutro não encontrado. Persistência de correlação é necessária.',
     );
+  }
+
+  private async persistMapping(
+    neutralId: string,
+    externalId: string,
+    entityType: 'pay' | 'cus',
+  ): Promise<void> {
+    this.externalIdsByNeutralId.set(neutralId, externalId);
+    if (!this.correlationStore || !externalId) {
+      return;
+    }
+    await this.correlationStore.saveMapping({
+      neutralId,
+      externalId,
+      entityType,
+      environment: this.environment,
+    });
   }
 }
 

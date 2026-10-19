@@ -10,9 +10,17 @@ import {
   createAdminCredentialsRouter,
   type CredentialRepositoryPort,
 } from './http/routes/adminCredentials.routes';
-
+import { createPaymentsRouter, type PaymentGatewayResolver } from './http/routes/payments.routes';
+import { createWebhooksRouter } from './http/routes/webhooks.routes';
+import { createPaymentGatewayForEnvironment } from './gateway/paymentGatewayFactory';
+import type { WebhookEventStore } from './payments/webhookEventStore';
+import { PrismaWebhookEventStore } from './payments/webhookEventStore';
+import type { IdempotencyStore } from './gateway/payment-gateway.interface';
 export type CreateAppOptions = {
   credentialRepository?: CredentialRepositoryPort;
+  resolvePaymentGateway?: PaymentGatewayResolver;
+  webhookEventStore?: WebhookEventStore;
+  idempotencyStore?: IdempotencyStore;
 };
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -38,6 +46,15 @@ export function createApp(options: CreateAppOptions = {}) {
       ProcessorCredentialVaultService.fromEnvironment(),
     );
 
+  const resolvePaymentGateway: PaymentGatewayResolver =
+    options.resolvePaymentGateway ??
+    (async (environment) => createPaymentGatewayForEnvironment(environment, credentialRepository));
+
+  const webhookEventStore =
+    options.webhookEventStore ?? new PrismaWebhookEventStore(prisma);
+
+  const idempotencyStore = options.idempotencyStore;
+
   app.get('/api/v1/health', (_req, res) => {
     res.json({
       status: 'ok',
@@ -51,6 +68,14 @@ export function createApp(options: CreateAppOptions = {}) {
     requireAdminApiToken,
     createAdminCredentialsRouter(credentialRepository),
   );
+
+  app.use(
+    '/api/v1/payments',
+    requireAdminApiToken,
+    createPaymentsRouter(resolvePaymentGateway, idempotencyStore),
+  );
+
+  app.use('/api/v1/webhooks', createWebhooksRouter(resolvePaymentGateway, webhookEventStore));
 
   app.use(errorHandler);
 

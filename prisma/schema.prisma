@@ -42,3 +42,24 @@ model PaymentIdempotencyKey {
 
   @@index([expiresAt])
 }
+
+/// Correlação entre IDs neutros NextPay e IDs do processador subjacente.
+model PaymentIdMapping {
+  id          String             @id @default(cuid())
+  neutralId   String             @unique @db.VarChar(80)
+  externalId  String             @db.VarChar(80)
+  entityType  String             @db.VarChar(16)
+  environment GatewayEnvironment
+  createdAt   DateTime           @default(now())
+
+  @@index([externalId, environment])
+}
+
+/// Registro de webhooks inbound já processados (idempotência).
+model InboundWebhookEvent {
+  id               String   @id @default(cuid())
+  eventFingerprint String   @unique @db.VarChar(128)
+  eventType        String   @db.VarChar(64)
+  payloadJson      String   @db.Text
+  createdAt        DateTime @default(now())
+}
