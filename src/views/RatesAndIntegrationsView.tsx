@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AdminSessionBar } from '../components/admin/AdminSessionBar';
 import { INITIAL_WEBHOOK_LOGS, WebhookLog, NEXTPAY_ACCOUNT } from '../data/mockData';
+import {
+  fetchMaskedCredential,
+  testProcessorConnectivity,
+  uiEnvironmentToApi,
+  upsertProcessorCredential,
+} from '../lib/api/adminCredentials';
+import { getAdminBearerToken } from '../lib/api/adminSession';
 
 interface RatesAndIntegrationsViewProps {
   onShowToast: (msg: string) => void;
@@ -15,6 +23,12 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
   const [copiedToken, setCopiedToken] = useState(false);
   const [isTestingLatency, setIsTestingLatency] = useState(false);
   const [currentLatency, setCurrentLatency] = useState<number | null>(null);
+  const [sessionTick, setSessionTick] = useState(0);
+  const [maskedProcessorToken, setMaskedProcessorToken] = useState('—');
+  const [credentialConfigured, setCredentialConfigured] = useState(false);
+  const [isLoadingCredential, setIsLoadingCredential] = useState(false);
+  const [processorTokenDraft, setProcessorTokenDraft] = useState('');
+  const [isSavingCredential, setIsSavingCredential] = useState(false);
 
   // Webhook inspector
   const [selectedLog, setSelectedLog] = useState<WebhookLog | null>(null);
@@ -24,24 +38,90 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
   const bankAgency = NEXTPAY_ACCOUNT.agency;
   const bankAccount = NEXTPAY_ACCOUNT.account;
 
-  const prodToken = 'nextpay_live_7cf740b4a6f4d00d188a9736';
-  const sandboxToken = 'nextpay_test_b9f0421199008e5061471bde';
-  const currentToken = environment === 'prod' ? prodToken : sandboxToken;
+  const apiEnvironment = uiEnvironmentToApi(environment);
 
-  const handleTestLatency = () => {
+  const reloadCredential = useCallback(async () => {
+    if (!getAdminBearerToken()) {
+      setMaskedProcessorToken('—');
+      setCredentialConfigured(false);
+      return;
+    }
+
+    setIsLoadingCredential(true);
+    try {
+      const data = await fetchMaskedCredential(apiEnvironment);
+      if (!data) {
+        setMaskedProcessorToken('Não configurado');
+        setCredentialConfigured(false);
+      } else {
+        setMaskedProcessorToken(data.maskedToken);
+        setCredentialConfigured(true);
+      }
+    } catch (error) {
+      setMaskedProcessorToken('Erro ao carregar');
+      setCredentialConfigured(false);
+      onShowToast(error instanceof Error ? error.message : 'Erro ao carregar credencial.');
+    } finally {
+      setIsLoadingCredential(false);
+    }
+  }, [apiEnvironment, onShowToast]);
+
+  useEffect(() => {
+    void reloadCredential();
+  }, [reloadCredential, sessionTick, environment]);
+
+  const handleTestLatency = async () => {
+    if (!getAdminBearerToken()) {
+      onShowToast('Configure a sessão administrativa primeiro.');
+      return;
+    }
+
     setIsTestingLatency(true);
-    setTimeout(() => {
-      const ping = Math.floor(Math.random() * 25) + 85;
-      setCurrentLatency(ping);
+    try {
+      const result = await testProcessorConnectivity(apiEnvironment);
+      setCurrentLatency(result.latencyMs);
+      onShowToast(
+        result.ok
+          ? `Conectividade OK (${result.latencyMs}ms).`
+          : `Conectividade falhou: ${result.message}`,
+      );
+    } catch (error) {
+      setCurrentLatency(null);
+      onShowToast(error instanceof Error ? error.message : 'Falha ao testar conectividade.');
+    } finally {
       setIsTestingLatency(false);
-    }, 500);
+    }
   };
 
   const handleCopyToken = () => {
-    navigator.clipboard.writeText(currentToken);
+    navigator.clipboard.writeText(maskedProcessorToken);
     setCopiedToken(true);
-    onShowToast(`Token de API (${environment.toUpperCase()}) copiado com sucesso!`);
+    onShowToast(`Referência mascarada (${environment.toUpperCase()}) copiada.`);
     setTimeout(() => setCopiedToken(false), 2000);
+  };
+
+  const handleSaveProcessorCredential = async () => {
+    if (!getAdminBearerToken()) {
+      onShowToast('Configure a sessão administrativa primeiro.');
+      return;
+    }
+    if (processorTokenDraft.trim().length < 16) {
+      onShowToast('Informe a chave do processador (mín. 16 caracteres).');
+      return;
+    }
+
+    setIsSavingCredential(true);
+    try {
+      const saved = await upsertProcessorCredential(apiEnvironment, processorTokenDraft.trim());
+      setMaskedProcessorToken(saved.maskedToken);
+      setCredentialConfigured(true);
+      setProcessorTokenDraft('');
+      onShowToast(`Credencial ${saved.environment} salva com sucesso.`);
+    } catch (error) {
+      onShowToast(error instanceof Error ? error.message : 'Falha ao salvar credencial.');
+    } finally {
+      setIsSavingCredential(false);
+    }
   };
 
   const handleDownloadPayloads = () => {
@@ -149,6 +229,11 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
             </button>
           </div>
         </div>
+
+        <AdminSessionBar
+          onSessionChanged={() => setSessionTick((value) => value + 1)}
+          onShowToast={onShowToast}
+        />
 
         {/* OWNER PROFIT EXPLANATION CALLOUT */}
         <div className="p-4 bg-secondary-container/20 rounded-2xl border border-secondary/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1014,13 +1099,15 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
               {/* Secret Token */}
               <div className="flex flex-col gap-space-xs">
                 <label className="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">
-                  Chave de API Secreta (Token Bearer)
+                  Credencial do processador (exibição mascarada)
                 </label>
                 <div className="flex items-center bg-surface-container-low rounded-lg p-1.5 border border-surface-container">
                   <input
                     type={isTokenVisible ? 'text' : 'password'}
                     readOnly
-                    value={currentToken}
+                    value={
+                      isLoadingCredential ? 'Carregando...' : maskedProcessorToken
+                    }
                     className="w-full bg-transparent font-mono text-body-sm text-on-surface px-space-sm focus:outline-none select-all"
                   />
                   <div className="flex items-center gap-1 shrink-0">
@@ -1049,8 +1136,37 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                 </div>
                 <span className="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
                   <span className="material-symbols-outlined text-[14px] text-outline">lock</span>
-                  Nunca exponha sua chave em aplicações client-side (frontend).
+                  Apenas referência mascarada — o segredo completo nunca é retornado pela API.
                 </span>
+                <span className="font-label-sm text-label-sm text-on-surface-variant">
+                  Status:{' '}
+                  <strong className={credentialConfigured ? 'text-secondary' : 'text-outline'}>
+                    {credentialConfigured ? 'Configurado' : 'Pendente'}
+                  </strong>
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-space-xs pt-space-xs border-t border-surface-container">
+                <label className="font-label-sm text-label-sm text-on-surface-variant uppercase font-semibold">
+                  Atualizar credencial do processador
+                </label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="password"
+                    value={processorTokenDraft}
+                    onChange={(e) => setProcessorTokenDraft(e.target.value)}
+                    placeholder="Cole a chave de API do processador (servidor)"
+                    className="flex-1 px-space-sm py-2 rounded-lg border border-surface-container bg-surface-container-low text-body-sm font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveProcessorCredential()}
+                    disabled={isSavingCredential}
+                    className="px-space-md py-2 rounded-lg bg-secondary text-on-secondary font-semibold text-body-sm disabled:opacity-50"
+                  >
+                    {isSavingCredential ? 'Salvando...' : 'Salvar no Vault'}
+                  </button>
+                </div>
               </div>
 
               {/* Webhook Endpoint */}

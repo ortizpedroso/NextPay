@@ -1,3 +1,4 @@
+import cors from 'cors';
 import express from 'express';
 
 import { ProcessorCredentialVaultService } from './vault/processorCredentialVault';
@@ -18,6 +19,16 @@ export function createApp(options: CreateAppOptions = {}) {
   const app = express();
 
   app.disable('x-powered-by');
+
+  const appOrigin = process.env.APP_URL?.trim() || 'http://localhost:3000';
+  app.use(
+    cors({
+      origin: appOrigin,
+      methods: ['GET', 'PUT', 'POST', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    }),
+  );
+
   app.use(express.json({ limit: '256kb' }));
 
   const credentialRepository =
