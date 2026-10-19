@@ -2,7 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { AdminSessionBar } from '../components/admin/AdminSessionBar';
 import { MerchantSessionBar } from '../components/merchant/MerchantSessionBar';
 import { INITIAL_WEBHOOK_LOGS, WebhookLog, NEXTPAY_ACCOUNT } from '../data/mockData';
-import { fetchInboundWebhookEvents } from '../lib/api/adminDashboard';
+import {
+  fetchFeeSchedule,
+  fetchInboundWebhookEvents,
+  type FeeScheduleDto,
+} from '../lib/api/adminDashboard';
+import { formatBRL } from '../lib/format';
 import { hasDashboardSession } from '../lib/api/dashboardAuth';
 import {
   fetchMaskedCredential,
@@ -36,6 +41,7 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
   // Webhook inspector
   const [selectedLog, setSelectedLog] = useState<WebhookLog | null>(null);
   const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([]);
+  const [feeSchedule, setFeeSchedule] = useState<FeeScheduleDto[]>([]);
 
   // Bank display
   const pixKey = NEXTPAY_ACCOUNT.pixKey;
@@ -73,6 +79,14 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
   useEffect(() => {
     void reloadCredential();
   }, [reloadCredential, sessionTick, environment]);
+
+  useEffect(() => {
+    if (!hasDashboardSession()) {
+      setFeeSchedule([]);
+      return;
+    }
+    void fetchFeeSchedule().then(setFeeSchedule).catch(() => setFeeSchedule([]));
+  }, [sessionTick]);
 
   useEffect(() => {
     if (!hasDashboardSession()) {
@@ -294,6 +308,30 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
               Regra Oficial: Custo Base de Liquidação + Margem do Dono do Gateway
             </span>
           </div>
+
+          {feeSchedule.length > 0 && (
+            <div className="rounded-xl border border-secondary/30 bg-secondary-container/10 p-space-md space-y-3">
+              <h2 className="font-label-md text-label-md text-secondary font-bold uppercase tracking-wide">
+                Tabela oficial (API • centavos)
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-space-sm">
+                {feeSchedule.map((fee) => (
+                  <div
+                    key={fee.id}
+                    className="rounded-lg bg-surface-container-lowest border border-surface-container p-space-sm"
+                  >
+                    <p className="font-semibold text-on-surface">{fee.name}</p>
+                    <p className="text-body-sm text-outline mt-1">{fee.description}</p>
+                    <p className="text-body-sm text-primary font-semibold mt-2">
+                      Cliente: {fee.clientRate.percentage.toFixed(2)}% +{' '}
+                      {formatBRL(fee.clientRate.fixedCents)}
+                    </p>
+                    <p className="text-xs text-outline mt-1">{fee.deadline}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Top 5 Cards (Including Card do Parcelado, Pix at R$ 2,48, Cartão à vista, Boleto) */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-space-md">

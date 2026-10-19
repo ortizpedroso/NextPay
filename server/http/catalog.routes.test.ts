@@ -77,6 +77,29 @@ describe('Catalog & payment links API', () => {
     expect(list.body.products).toHaveLength(1);
   });
 
+  it('admin: PATCH produto atualiza centavos', async () => {
+    const app = buildApp();
+    const created = await request(app)
+      .post('/api/v1/products')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        title: 'Workshop',
+        priceCents: 10000,
+        category: 'servicos',
+      });
+
+    const productPublicId = created.body.product.productPublicId as string;
+
+    const patched = await request(app)
+      .patch(`/api/v1/products/${productPublicId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ priceCents: 12500, title: 'Workshop Premium' });
+
+    expect(patched.status).toBe(200);
+    expect(patched.body.product.priceCents).toBe(12500);
+    expect(patched.body.product.title).toBe('Workshop Premium');
+  });
+
   it('admin: cria link de pagamento', async () => {
     const app = buildApp();
 

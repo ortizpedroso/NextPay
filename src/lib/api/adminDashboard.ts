@@ -34,3 +34,21 @@ export async function fetchFeeSchedule(): Promise<FeeScheduleDto[]> {
   const json = (await response.json()) as { fees: FeeScheduleDto[] };
   return json.fees;
 }
+
+export type DashboardMetricsDto = {
+  ledgerTransactionCount: number;
+  activePaymentLinks: number;
+  activeProducts: number;
+  inboundWebhookEvents: number;
+};
+
+export async function fetchDashboardMetrics(): Promise<DashboardMetricsDto | null> {
+  const response = await fetch('/api/v1/admin/dashboard/metrics', {
+    headers: dashboardAuthHeaders(false),
+  });
+  if (!response.ok) {
+    return null;
+  }
+  const json = (await response.json()) as { metrics: DashboardMetricsDto };
+  return json.metrics;
+}
