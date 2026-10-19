@@ -35,6 +35,7 @@ export const createPaymentInputSchema = z.object({
   idempotencyKey: z.string().min(8).max(128),
   installmentCount: z.number().int().min(1).max(21).optional(),
   externalReference: z.string().max(64).optional(),
+  splitWalletId: z.string().max(80).optional(),
 });
 export type CreatePaymentInput = z.infer<typeof createPaymentInputSchema>;
 

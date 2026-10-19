@@ -13,13 +13,63 @@ export class PrismaOutboundWebhookService implements OutboundWebhookService {
       return;
     }
 
-    await this.prisma.outboundWebhookDelivery.create({
+    const payloadJson = JSON.stringify({
+      eventType,
+      payload,
+      emittedAt: new Date().toISOString(),
+    });
+
+    const delivery = await this.prisma.outboundWebhookDelivery.create({
       data: {
         targetUrl,
         eventType,
-        payloadJson: JSON.stringify(payload),
+        payloadJson,
         status: 'QUEUED',
       },
+    });
+
+    void this.deliverHttp(delivery.id, targetUrl, payloadJson);
+  }
+
+  private async deliverHttp(deliveryId: string, targetUrl: string, payloadJson: string): Promise<void> {
+    try {
+      const response = await fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-NextPay-Event-Source': 'nextpay-platform',
+        },
+        body: payloadJson,
+        signal: AbortSignal.timeout(10_000),
+      });
+
+      await this.prisma.outboundWebhookDelivery.update({
+        where: { id: deliveryId },
+        data: { status: response.ok ? 'DELIVERED' : `FAILED_${response.status}` },
+      });
+    } catch {
+      await this.prisma.outboundWebhookDelivery
+        .update({
+          where: { id: deliveryId },
+          data: { status: 'FAILED' },
+        })
+        .catch(() => undefined);
+    }
+  }
+}
+
+export class InMemoryOutboundWebhookService implements OutboundWebhookService {
+  readonly deliveries: Array<{
+    eventType: string;
+    payload: unknown;
+    targetUrl?: string;
+  }> = [];
+
+  async dispatch(eventType: string, payload: unknown): Promise<void> {
+    this.deliveries.push({
+      eventType,
+      payload,
+      targetUrl: process.env.MERCHANT_WEBHOOK_URL?.trim(),
     });
   }
 }

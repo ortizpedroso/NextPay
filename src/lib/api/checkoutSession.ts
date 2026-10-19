@@ -13,12 +13,22 @@ export async function createCheckoutSession(input: {
   amountCents: number;
   description: string;
   method: CheckoutMethod;
+  paymentLinkPublicId?: string;
+  productPublicId?: string;
   customer: { name: string; email: string; document: string };
 }): Promise<CheckoutSessionResponse> {
   const response = await fetch('/api/v1/public/checkout/sessions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...input, environment: 'SANDBOX' }),
+    body: JSON.stringify({
+      amountCents: input.amountCents,
+      description: input.description,
+      method: input.method,
+      paymentLinkPublicId: input.paymentLinkPublicId,
+      productPublicId: input.productPublicId,
+      customer: input.customer,
+      environment: 'SANDBOX',
+    }),
   });
 
   if (!response.ok) {

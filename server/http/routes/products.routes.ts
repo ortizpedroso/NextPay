@@ -30,6 +30,8 @@ export type CatalogProductRecord = {
 export interface CatalogProductStore {
   list(includeArchived?: boolean): Promise<CatalogProductRecord[]>;
   getByPublicId(productPublicId: string): Promise<CatalogProductRecord | null>;
+  getBySlugOrPublicId(slugOrId: string): Promise<CatalogProductRecord | null>;
+  incrementSales(productPublicId: string): Promise<void>;
   create(input: Omit<CatalogProductRecord, 'productPublicId' | 'checkoutUrl' | 'salesCount' | 'status'> & {
     productPublicId: string;
     urlSlug: string;
@@ -66,6 +68,26 @@ export class InMemoryCatalogProductStore implements CatalogProductStore {
 
   async getByPublicId(productPublicId: string): Promise<CatalogProductRecord | null> {
     return this.rows.get(productPublicId) ?? null;
+  }
+
+  async getBySlugOrPublicId(slugOrId: string): Promise<CatalogProductRecord | null> {
+    const byId = this.rows.get(slugOrId);
+    if (byId) {
+      return byId;
+    }
+    for (const row of this.rows.values()) {
+      if (row.urlSlug === slugOrId) {
+        return row;
+      }
+    }
+    return null;
+  }
+
+  async incrementSales(productPublicId: string): Promise<void> {
+    const row = this.rows.get(productPublicId);
+    if (row) {
+      row.salesCount += 1;
+    }
   }
 
   async create(

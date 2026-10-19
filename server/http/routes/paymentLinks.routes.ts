@@ -29,6 +29,8 @@ export type PaymentLinkRecord = {
 export interface PaymentLinkStore {
   list(): Promise<PaymentLinkRecord[]>;
   getByPublicId(linkPublicId: string): Promise<PaymentLinkRecord | null>;
+  getBySlugOrPublicId(slugOrId: string): Promise<PaymentLinkRecord | null>;
+  recordConfirmedSale(linkPublicId: string, amountCents: number): Promise<void>;
   create(input: {
     linkPublicId: string;
     urlSlug: string;
@@ -60,6 +62,27 @@ export class InMemoryPaymentLinkStore implements PaymentLinkStore {
 
   async getByPublicId(linkPublicId: string): Promise<PaymentLinkRecord | null> {
     return this.rows.get(linkPublicId) ?? null;
+  }
+
+  async getBySlugOrPublicId(slugOrId: string): Promise<PaymentLinkRecord | null> {
+    const byId = this.rows.get(slugOrId);
+    if (byId) {
+      return byId;
+    }
+    for (const row of this.rows.values()) {
+      if (row.urlSlug === slugOrId) {
+        return row;
+      }
+    }
+    return null;
+  }
+
+  async recordConfirmedSale(linkPublicId: string, amountCents: number): Promise<void> {
+    const row = this.rows.get(linkPublicId);
+    if (row) {
+      row.salesCount += 1;
+      row.totalBilledCents += amountCents;
+    }
   }
 
   async create(input: {

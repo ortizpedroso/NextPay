@@ -46,7 +46,8 @@ import {
   sumAvailableBalanceCents,
 } from './lib/api/ledgerMappers';
 import { parseBRLToCents } from './lib/format';
-import { getAdminBearerToken } from './lib/api/adminSession';
+import { hasDashboardSession } from './lib/api/dashboardAuth';
+import { resolvePublicCheckout, type PublicCheckoutPayload } from './lib/api/publicCheckout';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<string>('dashboard');
@@ -59,8 +60,11 @@ export default function App() {
   const [clients, setClients] = useState<ClientRow[]>(INITIAL_CLIENTS);
   const [availableBalance, setAvailableBalance] = useState(48920.5);
 
+  const [publicCheckoutContext, setPublicCheckoutContext] =
+    useState<PublicCheckoutPayload | null>(null);
+
   const refreshFromApi = useCallback(async () => {
-    if (!getAdminBearerToken()) {
+    if (!hasDashboardSession()) {
       return;
     }
     const [ledgerRows, customerRows, productRows, linkRows] = await Promise.all([
@@ -87,6 +91,53 @@ export default function App() {
   useEffect(() => {
     void refreshFromApi();
   }, [refreshFromApi]);
+
+  useEffect(() => {
+    const match = window.location.pathname.match(/^\/pay\/([^/]+)\/?$/);
+    if (!match?.[1]) {
+      return;
+    }
+    const slug = decodeURIComponent(match[1]);
+    void resolvePublicCheckout(slug)
+      .then((checkout) => {
+        setPublicCheckoutContext(checkout);
+        if (checkout.kind === 'payment_link') {
+          setCheckoutItem({
+            id: checkout.linkPublicId,
+            title: checkout.title,
+            subtitle: checkout.subtitle,
+            type: checkout.billingType,
+            typeLabel:
+              checkout.billingType === 'recorrente' ? 'Recorrente Mensal' : 'Cobrança Avulsa',
+            status: 'Ativo',
+            unitPrice: checkout.amountCents / 100,
+            unitPriceFormatted: `R$ ${(checkout.amountCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+            totalBilledFormatted: 'R$ 0,00',
+            sales: 0,
+            views: 0,
+            conversionRate: '0.0%',
+            url: checkout.checkoutUrl,
+          });
+        } else {
+          setCheckoutItem({
+            id: checkout.productPublicId,
+            title: checkout.title,
+            description: checkout.description,
+            category: 'servicos',
+            categoryLabel: 'Serviços',
+            price: checkout.priceCents / 100,
+            priceFormatted: `R$ ${(checkout.priceCents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+            billingType: checkout.billingType,
+            installmentsText: `Até ${checkout.maxInstallments}x no cartão`,
+            imageUrl: checkout.imageUrl,
+            salesCount: 0,
+            statsText: 'Checkout público',
+          });
+        }
+        setCurrentView('checkout');
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (
@@ -149,7 +200,7 @@ export default function App() {
     imageUrl?: string;
   }) => {
     const priceCents = parseBRLToCents(input.priceBrlInput.replace(/^R\$\s?/, ''));
-    if (getAdminBearerToken()) {
+    if (hasDashboardSession()) {
       const created = await createCatalogProduct({
         title: input.title,
         description: input.description,
@@ -186,7 +237,7 @@ export default function App() {
     subtitle?: string;
   }) => {
     const amountCents = parseBRLToCents(input.amountBrlInput.replace(/^R\$\s?/, ''));
-    if (getAdminBearerToken()) {
+    if (hasDashboardSession()) {
       const created = await createPaymentLink({
         title: input.title,
         billingType: input.billingType,
@@ -300,6 +351,7 @@ export default function App() {
       {currentView === 'checkout' ? (
         <CheckoutView
           selectedItem={checkoutItem}
+          publicCheckout={publicCheckoutContext}
           onBackToDashboard={() => setCurrentView('dashboard')}
           onShowToast={showToast}
         />

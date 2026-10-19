@@ -91,7 +91,10 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
     const customerExternalId =
       this.externalIdsByNeutralId.get(parsed.customerId) ?? parsed.customerId;
 
-    const raw = await this.http.createPayment({
+    const splitWalletId =
+      parsed.splitWalletId?.trim() || process.env.NEXTPAY_WALLET_ID?.trim() || undefined;
+
+    const paymentBody: Record<string, unknown> = {
       customer: customerExternalId,
       billingType: mapMethodToBillingType(parsed.method),
       value: parsed.amountCents / 100,
@@ -99,7 +102,13 @@ export class PrimaryProcessorGatewayAdapter implements PaymentGatewayInterface {
       description: parsed.description,
       externalReference: parsed.externalReference ?? parsed.idempotencyKey,
       installmentCount: parsed.installmentCount,
-    });
+    };
+
+    if (splitWalletId) {
+      paymentBody.split = [{ walletId: splitWalletId, fixedValue: null, percentualValue: null }];
+    }
+
+    const raw = await this.http.createPayment(paymentBody);
 
     const mapped = mapRawPaymentToRecord(raw);
     await this.persistMapping(mapped.paymentId, raw.externalId, 'pay');

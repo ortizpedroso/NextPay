@@ -90,6 +90,26 @@ export class PrismaCatalogProductStore implements CatalogProductStore {
     return row ? mapProduct(row) : null;
   }
 
+  async getBySlugOrPublicId(slugOrId: string): Promise<CatalogProductRecord | null> {
+    const byId = await this.prisma.catalogProduct.findUnique({
+      where: { productPublicId: slugOrId },
+    });
+    if (byId) {
+      return mapProduct(byId);
+    }
+    const bySlug = await this.prisma.catalogProduct.findUnique({
+      where: { urlSlug: slugOrId },
+    });
+    return bySlug ? mapProduct(bySlug) : null;
+  }
+
+  async incrementSales(productPublicId: string): Promise<void> {
+    await this.prisma.catalogProduct.updateMany({
+      where: { productPublicId },
+      data: { salesCount: { increment: 1 } },
+    });
+  }
+
   async create(
     input: Omit<CatalogProductRecord, 'checkoutUrl' | 'salesCount' | 'status'> & {
       productPublicId: string;
@@ -160,6 +180,29 @@ export class PrismaPaymentLinkStore implements PaymentLinkStore {
       where: { linkPublicId },
     });
     return row ? mapLink(row) : null;
+  }
+
+  async getBySlugOrPublicId(slugOrId: string): Promise<PaymentLinkRecord | null> {
+    const byId = await this.prisma.paymentLink.findUnique({
+      where: { linkPublicId: slugOrId },
+    });
+    if (byId) {
+      return mapLink(byId);
+    }
+    const bySlug = await this.prisma.paymentLink.findUnique({
+      where: { urlSlug: slugOrId },
+    });
+    return bySlug ? mapLink(bySlug) : null;
+  }
+
+  async recordConfirmedSale(linkPublicId: string, amountCents: number): Promise<void> {
+    await this.prisma.paymentLink.updateMany({
+      where: { linkPublicId },
+      data: {
+        salesCount: { increment: 1 },
+        totalBilledCents: { increment: amountCents },
+      },
+    });
   }
 
   async create(input: {

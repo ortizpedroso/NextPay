@@ -76,7 +76,10 @@ As seguintes variáveis de ambiente são utilizadas pelo NextPay:
 | `ASAAS_API_KEY`       | Chave de API da conta raiz NextPay no Asaas (somente servidor)          |
 | `ASAAS_ENV`           | Ambiente do Asaas (`sandbox` ou `production`)                           |
 | `ASAAS_WEBHOOK_TOKEN` | Token de validação de autenticidade dos webhooks do Asaas               |
-| `JWT_SECRET`          | Chave secreta para assinatura de tokens JWT                             |
+| `JWT_SECRET`          | Chave secreta para assinatura de tokens JWT (sessão do lojista)         |
+| `MERCHANT_LOGIN_EMAIL`| E-mail do lojista para login JWT no painel                              |
+| `MERCHANT_LOGIN_PASSWORD` | Senha do lojista (somente servidor)                               |
+| `PAYMENT_GATEWAY_MODE`| `fixture` / `in_memory` força adaptador simulado (sem processadora real) |
 | `ENCRYPTION_KEY`      | Chave de criptografia simétrica para chaves de API das subcontas        |
 | `NEXTPAY_WALLET_ID`   | Identificador da carteira da conta raiz NextPay para split de comissões |
 

@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AdminSessionBar } from '../components/admin/AdminSessionBar';
+import { MerchantSessionBar } from '../components/merchant/MerchantSessionBar';
 import { INITIAL_WEBHOOK_LOGS, WebhookLog, NEXTPAY_ACCOUNT } from '../data/mockData';
+import { fetchInboundWebhookEvents } from '../lib/api/adminDashboard';
+import { hasDashboardSession } from '../lib/api/dashboardAuth';
 import {
   fetchMaskedCredential,
   testProcessorConnectivity,
@@ -32,6 +35,7 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
 
   // Webhook inspector
   const [selectedLog, setSelectedLog] = useState<WebhookLog | null>(null);
+  const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([]);
 
   // Bank display
   const pixKey = NEXTPAY_ACCOUNT.pixKey;
@@ -69,6 +73,16 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
   useEffect(() => {
     void reloadCredential();
   }, [reloadCredential, sessionTick, environment]);
+
+  useEffect(() => {
+    if (!hasDashboardSession()) {
+      setWebhookLogs([]);
+      return;
+    }
+    void fetchInboundWebhookEvents().then((events) => {
+      setWebhookLogs(events);
+    });
+  }, [sessionTick]);
 
   const handleTestLatency = async () => {
     if (!getAdminBearerToken()) {
@@ -124,10 +138,13 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
     }
   };
 
+  const displayedWebhookLogs =
+    webhookLogs.length > 0 ? webhookLogs : hasDashboardSession() ? [] : INITIAL_WEBHOOK_LOGS;
+
   const handleDownloadPayloads = () => {
     const dataStr =
       'data:text/json;charset=utf-8,' +
-      encodeURIComponent(JSON.stringify(INITIAL_WEBHOOK_LOGS, null, 2));
+      encodeURIComponent(JSON.stringify(displayedWebhookLogs, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
     downloadAnchor.setAttribute('download', 'nextpay_webhooks_payload.json');
@@ -229,6 +246,11 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
             </button>
           </div>
         </div>
+
+        <MerchantSessionBar
+          onSessionChanged={() => setSessionTick((value) => value + 1)}
+          onShowToast={onShowToast}
+        />
 
         <AdminSessionBar
           onSessionChanged={() => setSessionTick((value) => value + 1)}
@@ -1240,7 +1262,7 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
               </div>
 
               <div className="flex flex-col gap-2 mt-space-xs">
-                {INITIAL_WEBHOOK_LOGS.map((log) => (
+                {displayedWebhookLogs.map((log) => (
                   <div
                     key={log.id}
                     onClick={() => setSelectedLog(log)}

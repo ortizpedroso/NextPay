@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { ProductItem, PaymentLink } from '../data/mockData';
 import { createCheckoutSession, getCheckoutSession } from '../lib/api/checkoutSession';
+import type { PublicCheckoutPayload } from '../lib/api/publicCheckout';
 
 interface CheckoutViewProps {
   selectedItem?: ProductItem | PaymentLink | null;
+  publicCheckout?: PublicCheckoutPayload | null;
   onBackToDashboard: () => void;
   onShowToast: (msg: string) => void;
 }
 
 export const CheckoutView: React.FC<CheckoutViewProps> = ({
   selectedItem,
+  publicCheckout,
   onBackToDashboard,
   onShowToast,
 }) => {
@@ -98,6 +101,10 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
         amountCents,
         description: itemTitle,
         method,
+        paymentLinkPublicId:
+          publicCheckout?.kind === 'payment_link' ? publicCheckout.linkPublicId : undefined,
+        productPublicId:
+          publicCheckout?.kind === 'product' ? publicCheckout.productPublicId : undefined,
         customer: {
           name: cardHolder.trim() || 'Cliente NextPay',
           email: 'cliente.checkout@nextpay.test',

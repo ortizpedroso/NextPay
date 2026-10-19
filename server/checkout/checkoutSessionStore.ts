@@ -12,12 +12,15 @@ export type CheckoutSessionRecord = {
   customerName: string;
   customerEmail: string;
   customerDocument: string;
+  paymentLinkPublicId?: string | null;
+  productPublicId?: string | null;
   environment: GatewayEnvironment;
 };
 
 export interface CheckoutSessionStore {
   create(record: CheckoutSessionRecord): Promise<CheckoutSessionRecord>;
   getByPublicId(sessionPublicId: string): Promise<CheckoutSessionRecord | null>;
+  getByPaymentId(paymentId: string): Promise<CheckoutSessionRecord | null>;
   updateByPaymentId(
     paymentId: string,
     status: string,
@@ -34,6 +37,15 @@ export class InMemoryCheckoutSessionStore implements CheckoutSessionStore {
 
   async getByPublicId(sessionPublicId: string): Promise<CheckoutSessionRecord | null> {
     return this.rows.get(sessionPublicId) ?? null;
+  }
+
+  async getByPaymentId(paymentId: string): Promise<CheckoutSessionRecord | null> {
+    for (const row of this.rows.values()) {
+      if (row.paymentId === paymentId) {
+        return row;
+      }
+    }
+    return null;
   }
 
   async updateByPaymentId(
@@ -64,6 +76,13 @@ export class PrismaCheckoutSessionStore implements CheckoutSessionStore {
   async getByPublicId(sessionPublicId: string): Promise<CheckoutSessionRecord | null> {
     const row = await this.prisma.checkoutSession.findUnique({
       where: { sessionPublicId },
+    });
+    return row ? mapRow(row) : null;
+  }
+
+  async getByPaymentId(paymentId: string): Promise<CheckoutSessionRecord | null> {
+    const row = await this.prisma.checkoutSession.findFirst({
+      where: { paymentId },
     });
     return row ? mapRow(row) : null;
   }
@@ -101,6 +120,8 @@ function mapRow(row: {
   customerName: string;
   customerEmail: string;
   customerDocument: string;
+  paymentLinkPublicId?: string | null;
+  productPublicId?: string | null;
   environment: GatewayEnvironment;
 }): CheckoutSessionRecord {
   return {
@@ -114,6 +135,8 @@ function mapRow(row: {
     customerName: row.customerName,
     customerEmail: row.customerEmail,
     customerDocument: row.customerDocument,
+    paymentLinkPublicId: row.paymentLinkPublicId ?? null,
+    productPublicId: row.productPublicId ?? null,
     environment: row.environment,
   };
 }

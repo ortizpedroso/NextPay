@@ -7,6 +7,7 @@ import type { CheckoutSessionStore } from './checkout/checkoutSessionStore';
 import { createPaymentGatewayForEnvironment } from './gateway/paymentGatewayFactory';
 import type { IdempotencyStore } from './gateway/payment-gateway.interface';
 import { requireAdminApiToken } from './http/middleware/adminAuth';
+import { requireDashboardAuth } from './http/middleware/dashboardAuth';
 import { requireMerchantApiKey } from './http/middleware/merchantAuth';
 import { errorHandler } from './http/middleware/errorHandler';
 import {
@@ -31,13 +32,17 @@ import {
 } from './http/routes/products.routes';
 import type { CatalogProductStore } from './http/routes/products.routes';
 import { createPaymentsRouter, type PaymentGatewayResolver } from './http/routes/payments.routes';
+import { createAdminDashboardRouter } from './http/routes/adminDashboard.routes';
+import { createMerchantAuthRouter } from './http/routes/merchantAuth.routes';
 import { createPublicCheckoutRouter } from './http/routes/publicCheckout.routes';
+import { createPublicPaymentLinksRouter } from './http/routes/publicPaymentLinks.routes';
 import { createTransactionsRouter } from './http/routes/transactions.routes';
 import { createWebhooksRouter } from './http/routes/webhooks.routes';
 import { createWithdrawalsRouter } from './http/routes/withdrawals.routes';
 import { InMemoryLedgerStore, PrismaLedgerStore } from './payments/ledgerStore';
 import type { LedgerStore } from './payments/ledgerStore';
 import {
+  InMemoryOutboundWebhookService,
   NoopOutboundWebhookService,
   PrismaOutboundWebhookService,
 } from './payments/outboundWebhookService';
@@ -129,6 +134,13 @@ export function createApp(options: CreateAppOptions = {}) {
   );
 
   app.use(
+    '/api/v1/public',
+    createPublicPaymentLinksRouter(paymentLinkStore, catalogProductStore),
+  );
+
+  app.use('/api/v1/merchant/auth', createMerchantAuthRouter());
+
+  app.use(
     '/api/v1/admin/credentials',
     requireAdminApiToken,
     createAdminCredentialsRouter(credentialRepository),
@@ -136,38 +148,44 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use(
     '/api/v1/payments',
-    requireAdminApiToken,
+    requireDashboardAuth,
     createPaymentsRouter(resolvePaymentGateway, idempotencyStore),
   );
 
   app.use(
     '/api/v1/customers',
-    requireAdminApiToken,
+    requireDashboardAuth,
     createCustomersRouter(resolvePaymentGateway, merchantCustomerStore),
   );
 
   app.use(
     '/api/v1/transactions',
-    requireAdminApiToken,
+    requireDashboardAuth,
     createTransactionsRouter(ledgerStore),
   );
 
   app.use(
     '/api/v1/withdrawals',
-    requireAdminApiToken,
+    requireDashboardAuth,
     createWithdrawalsRouter(),
   );
 
   app.use(
     '/api/v1/products',
-    requireAdminApiToken,
+    requireDashboardAuth,
     createProductsRouter(catalogProductStore),
   );
 
   app.use(
     '/api/v1/payment-links',
-    requireAdminApiToken,
+    requireDashboardAuth,
     createPaymentLinksRouter(paymentLinkStore),
+  );
+
+  app.use(
+    '/api/v1/admin/dashboard',
+    requireDashboardAuth,
+    createAdminDashboardRouter(prisma),
   );
 
   app.use(
@@ -185,6 +203,8 @@ export function createApp(options: CreateAppOptions = {}) {
       checkoutSessionStore,
       ledgerStore,
       outboundWebhookService,
+      paymentLinkStore,
+      catalogProductStore,
     ),
   );
 
@@ -200,5 +220,6 @@ export {
   InMemoryLedgerStore,
   InMemoryMerchantCustomerStore,
   InMemoryPaymentLinkStore,
+  InMemoryOutboundWebhookService,
   NoopOutboundWebhookService,
 };

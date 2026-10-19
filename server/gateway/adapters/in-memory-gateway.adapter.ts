@@ -96,19 +96,35 @@ export class InMemoryPaymentGateway implements PaymentGatewayInterface {
   }
 
   parseIncomingWebhook(payload: IncomingWebhookPayload): NormalizedWebhookEvent {
+    const body = payload.body as {
+      event?: string;
+      payment?: { id?: string; value?: number; status?: string };
+    };
     const fingerprint = createHash('sha256')
       .update(JSON.stringify(payload.body))
       .digest('hex')
       .slice(0, 32);
 
+    const externalPaymentId = body.payment?.id ?? '';
+    const paymentId = externalPaymentId
+      ? externalPaymentId.startsWith('np_pay_')
+        ? externalPaymentId
+        : toNeutralPaymentId(externalPaymentId)
+      : undefined;
+
     return {
       eventId: randomUUID(),
       eventType: 'PAYMENT_RECEIVED',
-      paymentId: `np_pay_${fingerprint.slice(0, 12)}`,
-      amountCents: 0,
-      status: 'RECEIVED',
+      paymentId,
+      amountCents: body.payment?.value ? Math.round(body.payment.value * 100) : 0,
+      status: body.payment?.status?.toUpperCase() === 'CONFIRMED' ? 'CONFIRMED' : 'RECEIVED',
       occurredAt: new Date().toISOString(),
       rawFingerprint: fingerprint,
     };
   }
+}
+
+function toNeutralPaymentId(externalId: string): string {
+  const digest = createHash('sha256').update(`pay:${externalId}`).digest('hex').slice(0, 24);
+  return `np_pay_${digest}`;
 }

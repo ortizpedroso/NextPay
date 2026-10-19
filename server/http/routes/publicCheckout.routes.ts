@@ -14,6 +14,8 @@ const createSessionSchema = z.object({
   description: z.string().min(1).max(500),
   method: z.enum(['PIX', 'CREDIT_CARD', 'BOLETO']),
   environment: gatewayEnvironmentSchema.default('SANDBOX'),
+  paymentLinkPublicId: z.string().max(80).optional(),
+  productPublicId: z.string().max(80).optional(),
   customer: z.object({
     name: z.string().min(2).max(140),
     email: z.string().email(),
@@ -59,6 +61,8 @@ export function createPublicCheckoutRouter(
         customerName: parsed.customer.name,
         customerEmail: parsed.customer.email,
         customerDocument: parsed.customer.document,
+        paymentLinkPublicId: parsed.paymentLinkPublicId ?? null,
+        productPublicId: parsed.productPublicId ?? null,
         environment: parsed.environment,
       });
 

@@ -1,15 +1,4 @@
-import { getAdminBearerToken } from './adminSession';
-
-function adminHeaders(): HeadersInit {
-  const token = getAdminBearerToken();
-  if (!token) {
-    throw new Error('Sessão administrativa não configurada.');
-  }
-  return {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-  };
-}
+import { dashboardAuthHeaders } from './dashboardAuth';
 
 export async function createAdminPayment(input: {
   amountCents: number;
@@ -20,7 +9,7 @@ export async function createAdminPayment(input: {
 }): Promise<{ payment: { paymentId: string; status: string } }> {
   const response = await fetch('/api/v1/payments', {
     method: 'POST',
-    headers: adminHeaders(),
+    headers: dashboardAuthHeaders(),
     body: JSON.stringify({ ...input, environment: 'SANDBOX' }),
   });
   if (!response.ok) {
@@ -36,7 +25,7 @@ export async function requestWithdrawal(input: {
 }): Promise<{ protocol: string; status: string }> {
   const response = await fetch('/api/v1/withdrawals', {
     method: 'POST',
-    headers: adminHeaders(),
+    headers: dashboardAuthHeaders(),
     body: JSON.stringify(input),
   });
   if (!response.ok) {
@@ -57,7 +46,9 @@ export type LedgerTransactionDto = {
 };
 
 export async function fetchLedgerTransactions(): Promise<LedgerTransactionDto[]> {
-  const response = await fetch('/api/v1/transactions', { headers: adminHeaders() });
+  const response = await fetch('/api/v1/transactions', {
+    headers: dashboardAuthHeaders(false),
+  });
   if (!response.ok) {
     return [];
   }
@@ -73,7 +64,9 @@ export type MerchantCustomerDto = {
 };
 
 export async function fetchMerchantCustomers(): Promise<MerchantCustomerDto[]> {
-  const response = await fetch('/api/v1/customers', { headers: adminHeaders() });
+  const response = await fetch('/api/v1/customers', {
+    headers: dashboardAuthHeaders(false),
+  });
   if (!response.ok) {
     return [];
   }
@@ -115,7 +108,9 @@ export type PaymentLinkDto = {
 };
 
 export async function fetchCatalogProducts(): Promise<CatalogProductDto[]> {
-  const response = await fetch('/api/v1/products', { headers: adminHeaders() });
+  const response = await fetch('/api/v1/products', {
+    headers: dashboardAuthHeaders(false),
+  });
   if (!response.ok) {
     return [];
   }
@@ -135,7 +130,7 @@ export async function createCatalogProduct(input: {
 }): Promise<CatalogProductDto> {
   const response = await fetch('/api/v1/products', {
     method: 'POST',
-    headers: adminHeaders(),
+    headers: dashboardAuthHeaders(),
     body: JSON.stringify(input),
   });
   if (!response.ok) {
@@ -147,7 +142,9 @@ export async function createCatalogProduct(input: {
 }
 
 export async function fetchPaymentLinks(): Promise<PaymentLinkDto[]> {
-  const response = await fetch('/api/v1/payment-links', { headers: adminHeaders() });
+  const response = await fetch('/api/v1/payment-links', {
+    headers: dashboardAuthHeaders(false),
+  });
   if (!response.ok) {
     return [];
   }
@@ -165,7 +162,7 @@ export async function createPaymentLink(input: {
 }): Promise<PaymentLinkDto> {
   const response = await fetch('/api/v1/payment-links', {
     method: 'POST',
-    headers: adminHeaders(),
+    headers: dashboardAuthHeaders(),
     body: JSON.stringify(input),
   });
   if (!response.ok) {

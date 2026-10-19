@@ -65,20 +65,25 @@ model InboundWebhookEvent {
 }
 
 model CheckoutSession {
-  id               String             @id @default(cuid())
-  sessionPublicId  String             @unique @db.VarChar(64)
-  amountCents      Int
-  description      String             @db.VarChar(500)
-  method           String             @db.VarChar(32)
-  status           String             @db.VarChar(32)
-  paymentId        String?            @db.VarChar(80)
-  pixCopyPaste     String?            @db.Text
-  customerName     String             @db.VarChar(140)
-  customerEmail    String             @db.VarChar(180)
-  customerDocument String             @db.VarChar(18)
-  environment      GatewayEnvironment @default(SANDBOX)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  id                   String             @id @default(cuid())
+  sessionPublicId      String             @unique @db.VarChar(64)
+  amountCents          Int
+  description          String             @db.VarChar(500)
+  method               String             @db.VarChar(32)
+  status               String             @db.VarChar(32)
+  paymentId            String?            @db.VarChar(80)
+  pixCopyPaste         String?            @db.Text
+  customerName         String             @db.VarChar(140)
+  customerEmail        String             @db.VarChar(180)
+  customerDocument     String             @db.VarChar(18)
+  paymentLinkPublicId  String?            @db.VarChar(80)
+  productPublicId      String?            @db.VarChar(80)
+  environment          GatewayEnvironment @default(SANDBOX)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([paymentLinkPublicId])
+  @@index([productPublicId])
 }
 
 model MerchantCustomer {
