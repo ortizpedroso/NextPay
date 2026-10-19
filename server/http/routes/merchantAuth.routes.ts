@@ -42,10 +42,7 @@ export function createMerchantAuthRouter(): Router {
       return;
     }
 
-    if (
-      body.email.toLowerCase() !== email ||
-      !verifyPassword(body.password, password)
-    ) {
+    if (body.email.toLowerCase() !== email || !verifyPassword(body.password, password)) {
       res.status(401).json({ error: 'E-mail ou senha incorretos.', code: 'UNAUTHORIZED' });
       return;
     }

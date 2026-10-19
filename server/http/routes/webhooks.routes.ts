@@ -28,7 +28,9 @@ export function createWebhooksRouter(
     try {
       const configuredSecret = process.env.WEBHOOK_INBOUND_SECRET?.trim();
       if (!configuredSecret) {
-        res.status(503).json({ error: 'Webhook inbound não configurado.', code: 'WEBHOOK_DISABLED' });
+        res
+          .status(503)
+          .json({ error: 'Webhook inbound não configurado.', code: 'WEBHOOK_DISABLED' });
         return;
       }
 

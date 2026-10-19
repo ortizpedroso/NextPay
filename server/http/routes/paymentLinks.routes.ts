@@ -1,11 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 
-import {
-  buildCheckoutUrl,
-  newPaymentLinkPublicId,
-  slugifyTitle,
-} from '../../catalog/catalogIds';
+import { buildCheckoutUrl, newPaymentLinkPublicId, slugifyTitle } from '../../catalog/catalogIds';
 
 const billingTypeSchema = z.enum(['avulsa', 'recorrente']);
 const linkStatusSchema = z.enum(['ACTIVE', 'PAUSED']);

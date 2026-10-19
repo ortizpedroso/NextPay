@@ -21,10 +21,7 @@ export interface CheckoutSessionStore {
   create(record: CheckoutSessionRecord): Promise<CheckoutSessionRecord>;
   getByPublicId(sessionPublicId: string): Promise<CheckoutSessionRecord | null>;
   getByPaymentId(paymentId: string): Promise<CheckoutSessionRecord | null>;
-  updateByPaymentId(
-    paymentId: string,
-    status: string,
-  ): Promise<CheckoutSessionRecord | null>;
+  updateByPaymentId(paymentId: string, status: string): Promise<CheckoutSessionRecord | null>;
 }
 
 export class InMemoryCheckoutSessionStore implements CheckoutSessionStore {

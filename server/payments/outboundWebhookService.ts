@@ -31,7 +31,11 @@ export class PrismaOutboundWebhookService implements OutboundWebhookService {
     void this.deliverHttp(delivery.id, targetUrl, payloadJson);
   }
 
-  private async deliverHttp(deliveryId: string, targetUrl: string, payloadJson: string): Promise<void> {
+  private async deliverHttp(
+    deliveryId: string,
+    targetUrl: string,
+    payloadJson: string,
+  ): Promise<void> {
     try {
       const response = await fetch(targetUrl, {
         method: 'POST',

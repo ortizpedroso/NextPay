@@ -22,9 +22,7 @@ export type PublicCheckoutPayload =
     };
 
 export async function resolvePublicCheckout(slugOrId: string): Promise<PublicCheckoutPayload> {
-  const response = await fetch(
-    `/api/v1/public/resolve/${encodeURIComponent(slugOrId)}`,
-  );
+  const response = await fetch(`/api/v1/public/resolve/${encodeURIComponent(slugOrId)}`);
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? 'Checkout não encontrado.');

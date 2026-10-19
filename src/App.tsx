@@ -36,10 +36,7 @@ import {
   fetchMerchantCustomers,
   fetchPaymentLinks,
 } from './lib/api/adminOperations';
-import {
-  catalogProductToItem,
-  paymentLinkDtoToItem,
-} from './lib/api/catalogMappers';
+import { catalogProductToItem, paymentLinkDtoToItem } from './lib/api/catalogMappers';
 import {
   ledgerRowToTransaction,
   merchantCustomerToClientRow,
@@ -60,8 +57,9 @@ export default function App() {
   const [clients, setClients] = useState<ClientRow[]>(INITIAL_CLIENTS);
   const [availableBalance, setAvailableBalance] = useState(48920.5);
 
-  const [publicCheckoutContext, setPublicCheckoutContext] =
-    useState<PublicCheckoutPayload | null>(null);
+  const [publicCheckoutContext, setPublicCheckoutContext] = useState<PublicCheckoutPayload | null>(
+    null,
+  );
 
   const refreshFromApi = useCallback(async () => {
     if (!hasDashboardSession()) {

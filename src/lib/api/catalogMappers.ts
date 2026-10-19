@@ -10,7 +10,10 @@ const categoryLabelMap: Record<ProductItem['category'], string> = {
   projetos: 'Projeto Sob Medida',
 };
 
-function installmentsText(billingType: ProductItem['billingType'], maxInstallments: number): string {
+function installmentsText(
+  billingType: ProductItem['billingType'],
+  maxInstallments: number,
+): string {
   if (billingType === 'recorrente') {
     return 'Débito recorrente mensal';
   }
@@ -50,9 +53,7 @@ export function catalogProductToItem(dto: CatalogProductDto): ProductItem {
     imageUrl: dto.imageUrl,
     salesCount: dto.salesCount,
     statsText:
-      dto.salesCount > 0
-        ? `${dto.salesCount} cobranças liquidadas`
-        : 'Novo item • 0 vendas',
+      dto.salesCount > 0 ? `${dto.salesCount} cobranças liquidadas` : 'Novo item • 0 vendas',
   };
 }
 

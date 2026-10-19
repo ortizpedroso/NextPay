@@ -3,7 +3,11 @@ import type { IdempotencyStore } from '../gateway/payment-gateway.interface';
 export class InMemoryIdempotencyStore implements IdempotencyStore {
   private readonly rows = new Map<string, { hash: string; response: string }>();
 
-  async get(operation: string, idempotencyKey: string, requestHash: string): Promise<string | null> {
+  async get(
+    operation: string,
+    idempotencyKey: string,
+    requestHash: string,
+  ): Promise<string | null> {
     const key = `${operation}:${idempotencyKey}`;
     const row = this.rows.get(key);
     if (!row) {

@@ -1127,9 +1127,7 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                   <input
                     type={isTokenVisible ? 'text' : 'password'}
                     readOnly
-                    value={
-                      isLoadingCredential ? 'Carregando...' : maskedProcessorToken
-                    }
+                    value={isLoadingCredential ? 'Carregando...' : maskedProcessorToken}
                     className="w-full bg-transparent font-mono text-body-sm text-on-surface px-space-sm focus:outline-none select-all"
                   />
                   <div className="flex items-center gap-1 shrink-0">

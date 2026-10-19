@@ -91,11 +91,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
     setIsCreatingSession(true);
     try {
       const method =
-        selectedMethod === 'pix'
-          ? 'PIX'
-          : selectedMethod === 'card'
-            ? 'CREDIT_CARD'
-            : 'BOLETO';
+        selectedMethod === 'pix' ? 'PIX' : selectedMethod === 'card' ? 'CREDIT_CARD' : 'BOLETO';
 
       const session = await createCheckoutSession({
         amountCents,

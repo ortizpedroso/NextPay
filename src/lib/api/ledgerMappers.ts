@@ -63,11 +63,7 @@ export function ledgerRowToTransaction(row: LedgerRow): Transaction {
     code: row.neutralPaymentId.replace(/^np_pay_/, '#PAY-').slice(0, 16),
     method,
     methodDetail:
-      method === 'Pix'
-        ? 'Pix D+0 Instantâneo'
-        : method === 'Cartão'
-          ? 'Cartão 1x'
-          : 'Boleto CIP',
+      method === 'Pix' ? 'Pix D+0 Instantâneo' : method === 'Cartão' ? 'Cartão 1x' : 'Boleto CIP',
     date: 'Recente',
     grossAmount: grossCents / 100,
     grossAmountFormatted: formatBRL(grossCents),

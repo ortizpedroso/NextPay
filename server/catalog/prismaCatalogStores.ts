@@ -1,10 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
 import { buildCheckoutUrl } from './catalogIds';
-import type {
-  CatalogProductRecord,
-  CatalogProductStore,
-} from '../http/routes/products.routes';
+import type { CatalogProductRecord, CatalogProductStore } from '../http/routes/products.routes';
 import type { PaymentLinkRecord, PaymentLinkStore } from '../http/routes/paymentLinks.routes';
 
 function mapProduct(row: {

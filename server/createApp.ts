@@ -2,7 +2,10 @@ import cors from 'cors';
 import express from 'express';
 
 import { prisma } from './db/prisma';
-import { InMemoryCheckoutSessionStore, PrismaCheckoutSessionStore } from './checkout/checkoutSessionStore';
+import {
+  InMemoryCheckoutSessionStore,
+  PrismaCheckoutSessionStore,
+} from './checkout/checkoutSessionStore';
 import type { CheckoutSessionStore } from './checkout/checkoutSessionStore';
 import { createPaymentGatewayForEnvironment } from './gateway/paymentGatewayFactory';
 import type { IdempotencyStore } from './gateway/payment-gateway.interface';
@@ -14,22 +17,19 @@ import {
   createAdminCredentialsRouter,
   type CredentialRepositoryPort,
 } from './http/routes/adminCredentials.routes';
-import { createCustomersRouter, InMemoryMerchantCustomerStore } from './http/routes/customers.routes';
-import type { MerchantCustomerStore } from './http/routes/customers.routes';
 import {
-  PrismaCatalogProductStore,
-  PrismaPaymentLinkStore,
-} from './catalog/prismaCatalogStores';
+  createCustomersRouter,
+  InMemoryMerchantCustomerStore,
+} from './http/routes/customers.routes';
+import type { MerchantCustomerStore } from './http/routes/customers.routes';
+import { PrismaCatalogProductStore, PrismaPaymentLinkStore } from './catalog/prismaCatalogStores';
 import { createMerchantRouter } from './http/routes/merchant.routes';
 import {
   createPaymentLinksRouter,
   InMemoryPaymentLinkStore,
 } from './http/routes/paymentLinks.routes';
 import type { PaymentLinkStore } from './http/routes/paymentLinks.routes';
-import {
-  createProductsRouter,
-  InMemoryCatalogProductStore,
-} from './http/routes/products.routes';
+import { createProductsRouter, InMemoryCatalogProductStore } from './http/routes/products.routes';
 import type { CatalogProductStore } from './http/routes/products.routes';
 import { createPaymentsRouter, type PaymentGatewayResolver } from './http/routes/payments.routes';
 import { createAdminDashboardRouter } from './http/routes/adminDashboard.routes';
@@ -98,8 +98,7 @@ export function createApp(options: CreateAppOptions = {}) {
     options.resolvePaymentGateway ??
     (async (environment) => createPaymentGatewayForEnvironment(environment, credentialRepository));
 
-  const webhookEventStore =
-    options.webhookEventStore ?? new PrismaWebhookEventStore(prisma);
+  const webhookEventStore = options.webhookEventStore ?? new PrismaWebhookEventStore(prisma);
 
   const checkoutSessionStore =
     options.checkoutSessionStore ?? new PrismaCheckoutSessionStore(prisma);
@@ -112,11 +111,9 @@ export function createApp(options: CreateAppOptions = {}) {
   const outboundWebhookService =
     options.outboundWebhookService ?? new PrismaOutboundWebhookService(prisma);
 
-  const catalogProductStore =
-    options.catalogProductStore ?? new PrismaCatalogProductStore(prisma);
+  const catalogProductStore = options.catalogProductStore ?? new PrismaCatalogProductStore(prisma);
 
-  const paymentLinkStore =
-    options.paymentLinkStore ?? new PrismaPaymentLinkStore(prisma);
+  const paymentLinkStore = options.paymentLinkStore ?? new PrismaPaymentLinkStore(prisma);
 
   const idempotencyStore = options.idempotencyStore;
 
@@ -133,10 +130,7 @@ export function createApp(options: CreateAppOptions = {}) {
     createPublicCheckoutRouter(resolvePaymentGateway, checkoutSessionStore, ledgerStore),
   );
 
-  app.use(
-    '/api/v1/public',
-    createPublicPaymentLinksRouter(paymentLinkStore, catalogProductStore),
-  );
+  app.use('/api/v1/public', createPublicPaymentLinksRouter(paymentLinkStore, catalogProductStore));
 
   app.use('/api/v1/merchant/auth', createMerchantAuthRouter());
 
@@ -158,23 +152,11 @@ export function createApp(options: CreateAppOptions = {}) {
     createCustomersRouter(resolvePaymentGateway, merchantCustomerStore),
   );
 
-  app.use(
-    '/api/v1/transactions',
-    requireDashboardAuth,
-    createTransactionsRouter(ledgerStore),
-  );
+  app.use('/api/v1/transactions', requireDashboardAuth, createTransactionsRouter(ledgerStore));
 
-  app.use(
-    '/api/v1/withdrawals',
-    requireDashboardAuth,
-    createWithdrawalsRouter(),
-  );
+  app.use('/api/v1/withdrawals', requireDashboardAuth, createWithdrawalsRouter());
 
-  app.use(
-    '/api/v1/products',
-    requireDashboardAuth,
-    createProductsRouter(catalogProductStore),
-  );
+  app.use('/api/v1/products', requireDashboardAuth, createProductsRouter(catalogProductStore));
 
   app.use(
     '/api/v1/payment-links',
@@ -182,11 +164,7 @@ export function createApp(options: CreateAppOptions = {}) {
     createPaymentLinksRouter(paymentLinkStore),
   );
 
-  app.use(
-    '/api/v1/admin/dashboard',
-    requireDashboardAuth,
-    createAdminDashboardRouter(prisma),
-  );
+  app.use('/api/v1/admin/dashboard', requireDashboardAuth, createAdminDashboardRouter(prisma));
 
   app.use(
     '/api/v1/merchant',

@@ -73,9 +73,7 @@ describe('Remaining phases — public links, JWT, webhooks stats', () => {
     const listed = await request(app)
       .get('/api/v1/payment-links')
       .set('Authorization', `Bearer ${adminToken}`);
-    const link = listed.body.paymentLinks.find(
-      (row: { urlSlug: string }) => row.urlSlug === slug,
-    );
+    const link = listed.body.paymentLinks.find((row: { urlSlug: string }) => row.urlSlug === slug);
     expect(link.viewCount).toBeGreaterThanOrEqual(1);
   });
 

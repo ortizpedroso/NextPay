@@ -1,11 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 
-import {
-  buildCheckoutUrl,
-  newProductPublicId,
-  slugifyTitle,
-} from '../../catalog/catalogIds';
+import { buildCheckoutUrl, newProductPublicId, slugifyTitle } from '../../catalog/catalogIds';
 
 const productCategorySchema = z.enum(['servicos', 'digitais', 'recorrentes', 'projetos']);
 const billingTypeSchema = z.enum(['avulsa', 'recorrente']);
@@ -32,10 +28,15 @@ export interface CatalogProductStore {
   getByPublicId(productPublicId: string): Promise<CatalogProductRecord | null>;
   getBySlugOrPublicId(slugOrId: string): Promise<CatalogProductRecord | null>;
   incrementSales(productPublicId: string): Promise<void>;
-  create(input: Omit<CatalogProductRecord, 'productPublicId' | 'checkoutUrl' | 'salesCount' | 'status'> & {
-    productPublicId: string;
-    urlSlug: string;
-  }): Promise<CatalogProductRecord>;
+  create(
+    input: Omit<
+      CatalogProductRecord,
+      'productPublicId' | 'checkoutUrl' | 'salesCount' | 'status'
+    > & {
+      productPublicId: string;
+      urlSlug: string;
+    },
+  ): Promise<CatalogProductRecord>;
   update(
     productPublicId: string,
     patch: Partial<
@@ -61,9 +62,7 @@ export class InMemoryCatalogProductStore implements CatalogProductStore {
   private readonly rows = new Map<string, CatalogProductRecord>();
 
   async list(includeArchived = false): Promise<CatalogProductRecord[]> {
-    return [...this.rows.values()].filter(
-      (row) => includeArchived || row.status === 'ACTIVE',
-    );
+    return [...this.rows.values()].filter((row) => includeArchived || row.status === 'ACTIVE');
   }
 
   async getByPublicId(productPublicId: string): Promise<CatalogProductRecord | null> {
@@ -198,7 +197,8 @@ export function createProductsRouter(productStore: CatalogProductStore): Router 
         productPublicId,
         urlSlug,
         title: body.title.trim(),
-        description: body.description?.trim() || 'Descrição dos entregáveis e benefícios inclusos no pacote.',
+        description:
+          body.description?.trim() || 'Descrição dos entregáveis e benefícios inclusos no pacote.',
         category: body.category,
         badge: body.badge ?? null,
         priceCents: body.priceCents,

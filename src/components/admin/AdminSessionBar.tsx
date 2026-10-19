@@ -38,7 +38,9 @@ export const AdminSessionBar: React.FC<AdminSessionBarProps> = ({
   return (
     <div className="p-space-md rounded-xl border border-surface-container bg-surface-container-low flex flex-col gap-space-sm">
       <div className="flex items-center gap-2">
-        <span className="material-symbols-outlined text-primary text-[20px]">admin_panel_settings</span>
+        <span className="material-symbols-outlined text-primary text-[20px]">
+          admin_panel_settings
+        </span>
         <div>
           <h3 className="font-title-md text-title-md font-semibold text-on-surface">
             Acesso administrativo (sessão)

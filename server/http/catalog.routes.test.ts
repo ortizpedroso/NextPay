@@ -98,14 +98,11 @@ describe('Catalog & payment links API', () => {
   it('merchant: lista produtos e links', async () => {
     const app = buildApp();
 
-    await request(app)
-      .post('/api/v1/products')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        title: 'E-book Gestão',
-        priceCents: 9700,
-        category: 'digitais',
-      });
+    await request(app).post('/api/v1/products').set('Authorization', `Bearer ${adminToken}`).send({
+      title: 'E-book Gestão',
+      priceCents: 9700,
+      category: 'digitais',
+    });
 
     await request(app)
       .post('/api/v1/payment-links')
