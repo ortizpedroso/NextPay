@@ -51,6 +51,7 @@ import type { SubscriptionStore } from './subscriptions/subscriptionStore';
 import { createMerchantApiKeysRouter } from './http/routes/merchantApiKeys.routes';
 import { createMerchantIntegrationsRouter } from './http/routes/merchantIntegrations.routes';
 import { createJobsRouter } from './http/routes/jobs.routes';
+import { publicApiRateLimit, publicCheckoutRateLimit } from './http/middleware/publicRateLimit';
 import { createSandboxRouter } from './http/routes/sandbox.routes';
 import { InMemoryLedgerStore, PrismaLedgerStore } from './payments/ledgerStore';
 import type { LedgerStore } from './payments/ledgerStore';
@@ -141,10 +142,15 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use(
     '/api/v1/public/checkout',
+    publicCheckoutRateLimit,
     createPublicCheckoutRouter(resolvePaymentGateway, checkoutSessionStore, ledgerStore),
   );
 
-  app.use('/api/v1/public', createPublicPaymentLinksRouter(paymentLinkStore, catalogProductStore));
+  app.use(
+    '/api/v1/public',
+    publicApiRateLimit,
+    createPublicPaymentLinksRouter(paymentLinkStore, catalogProductStore),
+  );
 
   app.use('/api/v1/merchant/auth', createMerchantAuthRouter());
 
@@ -202,7 +208,11 @@ export function createApp(options: CreateAppOptions = {}) {
     createMerchantRouter(catalogProductStore, paymentLinkStore),
   );
 
-  app.use('/api/v1/jobs', requireInternalOrAdminToken, createJobsRouter(outboundWebhookService));
+  app.use(
+    '/api/v1/jobs',
+    requireInternalOrAdminToken,
+    createJobsRouter(outboundWebhookService, subscriptionStore, resolvePaymentGateway),
+  );
 
   app.use(
     '/api/v1/sandbox',

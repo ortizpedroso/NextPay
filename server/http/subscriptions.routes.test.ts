@@ -107,7 +107,7 @@ describe('Subscriptions API (phase 4)', () => {
       });
 
     const renewal = await request(app)
-      .post('/api/v1/subscriptions/jobs/process-renewals')
+      .post('/api/v1/jobs/process-subscription-renewals')
       .set('Authorization', `Bearer ${adminToken}`);
 
     expect(renewal.status).toBe(200);

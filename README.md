@@ -104,7 +104,7 @@ As seguintes variáveis de ambiente são utilizadas pelo NextPay:
 | `ASAAS_ENV`                | `sandbox` ou `production` (ambiente padrão de webhooks/gateway)          |
 | `NEXTPAY_WALLET_ID`        | Carteira NextPay para split de comissão                                  |
 | `NEXTPAY_SPLIT_PERCENT`    | Percentual do split para a carteira NextPay (padrão `1`)                 |
-| `INTERNAL_JOB_TOKEN`       | Bearer para `POST /api/v1/jobs/process-outbound-retries` (cron interno)  |
+| `INTERNAL_JOB_TOKEN`       | Bearer para jobs internos (`process-outbound-retries`, `process-subscription-renewals`) |
 | `MERCHANT_WEBHOOK_URL`     | Destino dos webhooks outbound enfileirados pelo ledger                   |
 | `VITE_DEMO_MODE`           | `false` em produção: desliga fallbacks locais do painel sem login        |
 

@@ -6,7 +6,6 @@ import {
   resolveMerchantDbIdForRead,
   resolveMerchantDbIdForWrite,
 } from '../../merchant/merchantScope';
-import { processDueSubscriptionRenewals } from '../../subscriptions/subscriptionRenewal';
 import type { SubscriptionStore } from '../../subscriptions/subscriptionStore';
 import type { PaymentGatewayResolver } from './payments.routes';
 
@@ -29,7 +28,7 @@ const updateSubscriptionSchema = z.object({
 
 export function createSubscriptionsRouter(
   subscriptionStore: SubscriptionStore,
-  resolveGateway?: PaymentGatewayResolver,
+  _resolveGateway?: PaymentGatewayResolver,
 ): Router {
   const router = Router();
 
@@ -48,19 +47,6 @@ export function createSubscriptionsRouter(
       const merchantDbId = await resolveMerchantDbIdForRead(req as DashboardRequest);
       const plans = await subscriptionStore.listPlanSummaries(merchantDbId);
       res.json({ plans });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  router.post('/jobs/process-renewals', async (req, res, next) => {
-    try {
-      if (!resolveGateway) {
-        res.status(503).json({ error: 'Renovação indisponível.', code: 'RENEWAL_DISABLED' });
-        return;
-      }
-      const result = await processDueSubscriptionRenewals(subscriptionStore, resolveGateway);
-      res.json(result);
     } catch (error) {
       next(error);
     }
