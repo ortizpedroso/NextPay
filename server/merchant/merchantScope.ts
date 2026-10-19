@@ -12,6 +12,10 @@ export type DashboardRequest = Request & {
   dashboardIsAdmin?: boolean;
 };
 
+export type MerchantApiRequest = Request & {
+  merchantApiKeyAuth?: { merchantDbId: string; keyPublicId: string };
+};
+
 let defaultMerchantDbId: string | null = null;
 
 export async function getDefaultMerchantDbId(): Promise<string> {

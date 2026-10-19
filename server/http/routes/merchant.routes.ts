@@ -1,9 +1,16 @@
 import { Router } from 'express';
 
 import { prisma } from '../../db/prisma';
-import { getDefaultMerchantDbId } from '../../merchant/merchantScope';
+import { getDefaultMerchantDbId, type MerchantApiRequest } from '../../merchant/merchantScope';
 import type { CatalogProductStore } from './products.routes';
 import type { PaymentLinkStore } from './paymentLinks.routes';
+
+async function resolveMerchantDbIdForApiKey(req: MerchantApiRequest): Promise<string> {
+  if (req.merchantApiKeyAuth?.merchantDbId) {
+    return req.merchantApiKeyAuth.merchantDbId;
+  }
+  return getDefaultMerchantDbId();
+}
 
 export function createMerchantRouter(
   productStore: CatalogProductStore,
@@ -58,9 +65,9 @@ export function createMerchantRouter(
     }
   });
 
-  router.get('/products', async (_req, res, next) => {
+  router.get('/products', async (req, res, next) => {
     try {
-      const merchantDbId = await getDefaultMerchantDbId();
+      const merchantDbId = await resolveMerchantDbIdForApiKey(req as MerchantApiRequest);
       const products = await productStore.list(false, merchantDbId);
       res.json({ products });
     } catch (error) {
@@ -68,9 +75,9 @@ export function createMerchantRouter(
     }
   });
 
-  router.get('/payment-links', async (_req, res, next) => {
+  router.get('/payment-links', async (req, res, next) => {
     try {
-      const merchantDbId = await getDefaultMerchantDbId();
+      const merchantDbId = await resolveMerchantDbIdForApiKey(req as MerchantApiRequest);
       const paymentLinks = await linkStore.list(merchantDbId);
       res.json({ paymentLinks });
     } catch (error) {

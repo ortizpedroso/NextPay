@@ -96,8 +96,26 @@ As seguintes variáveis de ambiente são utilizadas pelo NextPay:
 | `ASAAS_ENV`                | `sandbox` ou `production` (ambiente padrão de webhooks/gateway)          |
 | `NEXTPAY_WALLET_ID`        | Carteira NextPay para split de comissão                                  |
 | `NEXTPAY_SPLIT_PERCENT`    | Percentual do split para a carteira NextPay (padrão `1`)                 |
+| `INTERNAL_JOB_TOKEN`       | Bearer para `POST /api/v1/jobs/process-outbound-retries` (cron interno)  |
+| `MERCHANT_WEBHOOK_URL`     | Destino dos webhooks outbound enfileirados pelo ledger                   |
+| `VITE_DEMO_MODE`           | `false` em produção: desliga fallbacks locais do painel sem login        |
 
 > **Nota de Segurança**: Chaves de API e segredos só existem no servidor e são lidos via `process.env`. Nenhuma credencial é exposta ao navegador.
+
+---
+
+## 🏭 Runbook de produção
+
+1. **Migrar banco**: `npx prisma migrate deploy` com `DATABASE_URL` de produção.
+2. **Credenciais do processador**: gravar tokens `np_sec_*` via `POST /api/v1/admin/credentials` (requer `ADMIN_API_TOKEN` + `MASTER_ENCRYPTION_KEY`). Em homologação use `PAYMENT_GATEWAY_MODE=fixture`.
+3. **Login do lojista**: configure `JWT_SECRET`, `MERCHANT_LOGIN_EMAIL` e `MERCHANT_LOGIN_PASSWORD`.
+4. **API merchant**: rotacione chaves em `GET/POST /api/v1/merchant/api-keys` (hash SHA-256 no banco). `MERCHANT_API_KEY` permanece como fallback legado.
+5. **Webhooks inbound**: defina `WEBHOOK_INBOUND_SECRET` e aponte o processador para `/api/v1/webhooks/inbound`.
+6. **Webhooks outbound / retries**: configure `MERCHANT_WEBHOOK_URL` e agende `POST /api/v1/jobs/process-outbound-retries` com `Authorization: Bearer $INTERNAL_JOB_TOKEN` (ou admin token).
+7. **Checkout cartão (white-label)**: sessões `CREDIT_CARD` redirecionam para `/hosted-card/:token` — sem armazenamento de PAN; confirmação stub usa apenas últimos 4 dígitos.
+8. **Saques**: rotas `/api/v1/withdrawals` operam em modo stub até credenciais reais de Pix-out do processador; consulte status via `GET /api/v1/withdrawals/:protocol`.
+9. **Build & start**: `npm run build && NODE_ENV=production npm start` (Express serve `dist/` + API na mesma porta).
+10. **Testes**: `npm test` (Vitest + Postgres no CI). E2E opcional: `npx playwright install chromium && npm run test:e2e`.
 
 ---
 

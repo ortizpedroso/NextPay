@@ -10,6 +10,8 @@ import type { CheckoutSessionStore } from './checkout/checkoutSessionStore';
 import { createPaymentGatewayForEnvironment } from './gateway/paymentGatewayFactory';
 import type { IdempotencyStore } from './gateway/payment-gateway.interface';
 import { requireAdminApiToken } from './http/middleware/adminAuth';
+import { requireInternalOrAdminToken } from './http/middleware/internalOrAdminAuth';
+import { requireSandboxEnvironment } from './http/middleware/sandboxOnly';
 import { requireDashboardAuth } from './http/middleware/dashboardAuth';
 import { requireMerchantApiKey } from './http/middleware/merchantAuth';
 import { errorHandler } from './http/middleware/errorHandler';
@@ -47,6 +49,8 @@ import {
 import type { SubscriptionStore } from './subscriptions/subscriptionStore';
 import { createMerchantApiKeysRouter } from './http/routes/merchantApiKeys.routes';
 import { createMerchantIntegrationsRouter } from './http/routes/merchantIntegrations.routes';
+import { createJobsRouter } from './http/routes/jobs.routes';
+import { createSandboxRouter } from './http/routes/sandbox.routes';
 import { InMemoryLedgerStore, PrismaLedgerStore } from './payments/ledgerStore';
 import type { LedgerStore } from './payments/ledgerStore';
 import {
@@ -193,6 +197,15 @@ export function createApp(options: CreateAppOptions = {}) {
     '/api/v1/merchant',
     requireMerchantApiKey,
     createMerchantRouter(catalogProductStore, paymentLinkStore),
+  );
+
+  app.use('/api/v1/jobs', requireInternalOrAdminToken, createJobsRouter(outboundWebhookService));
+
+  app.use(
+    '/api/v1/sandbox',
+    requireDashboardAuth,
+    requireSandboxEnvironment,
+    createSandboxRouter(ledgerStore),
   );
 
   const webhookGatewayEnvironment = resolveDefaultGatewayEnvironment();

@@ -38,8 +38,12 @@ import {
 import { parseBRLToCents } from './lib/format';
 import { hasDashboardSession } from './lib/api/dashboardAuth';
 import { resolvePublicCheckout, type PublicCheckoutPayload } from './lib/api/publicCheckout';
+import { isDemoMode } from './lib/demoMode';
+import { HostedCardView } from './views/HostedCardView';
+import { SimularVendaView } from './views/SimularVendaView';
 
 export default function App() {
+  const [hostedCardToken, setHostedCardToken] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
@@ -89,6 +93,13 @@ export default function App() {
   }, [refreshFromApi]);
 
   useEffect(() => {
+    const hostedMatch = window.location.pathname.match(/^\/hosted-card\/([^/]+)\/?$/);
+    if (hostedMatch?.[1]) {
+      setHostedCardToken(decodeURIComponent(hostedMatch[1]));
+      return;
+    }
+    setHostedCardToken(null);
+
     const match = window.location.pathname.match(/^\/pay\/([^/]+)\/?$/);
     if (!match?.[1]) {
       return;
@@ -209,6 +220,10 @@ export default function App() {
       setProducts((prev) => [catalogProductToItem(created), ...prev]);
       return;
     }
+    if (!isDemoMode()) {
+      showToast('Faça login no painel para cadastrar produtos.');
+      return;
+    }
     const fallback: ProductItem = {
       id: `prod-${Date.now()}`,
       title: input.title,
@@ -241,6 +256,10 @@ export default function App() {
         subtitle: input.subtitle,
       });
       setPaymentLinks((prev) => [paymentLinkDtoToItem(created), ...prev]);
+      return;
+    }
+    if (!isDemoMode()) {
+      showToast('Faça login no painel para criar links.');
       return;
     }
     const cleanSlug = input.title
@@ -297,6 +316,10 @@ export default function App() {
     setCheckoutItem(link);
     setCurrentView('checkout');
   };
+
+  if (hostedCardToken) {
+    return <HostedCardView token={hostedCardToken} onShowToast={showToast} />;
+  }
 
   return (
     <div className="min-h-screen bg-surface font-body-md text-body-md text-on-surface antialiased flex flex-col">
@@ -428,6 +451,8 @@ export default function App() {
                   onNavigate={(viewId) => setCurrentView(viewId)}
                 />
               )}
+
+              {currentView === 'simular-venda' && <SimularVendaView onShowToast={showToast} />}
 
               {(currentView === 'integracoes-e-api' ||
                 currentView === 'configuracoes-de-taxas') && (

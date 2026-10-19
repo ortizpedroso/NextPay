@@ -7,6 +7,11 @@ import {
   type CheckoutSessionStore,
   newCheckoutPublicId,
 } from '../../checkout/checkoutSessionStore';
+import {
+  confirmHostedCardToken,
+  getHostedCardToken,
+  issueHostedCardToken,
+} from '../../checkout/hostedCardTokens';
 import { resolveCheckoutMerchantDbId } from '../../merchant/resolveCheckoutMerchant';
 import type { LedgerStore } from '../../payments/ledgerStore';
 
@@ -95,6 +100,96 @@ export function createPublicCheckoutRouter(
           amountCents: session.amountCents,
           method: session.method,
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post('/sessions/:sessionPublicId/hosted-card', async (req, res, next) => {
+    try {
+      const sessionPublicId = z.string().min(8).parse(req.params.sessionPublicId);
+      const session = await checkoutStore.getByPublicId(sessionPublicId);
+      if (!session) {
+        res.status(404).json({ error: 'Sessão não encontrada.', code: 'NOT_FOUND' });
+        return;
+      }
+      if (session.method !== 'CREDIT_CARD') {
+        res.status(400).json({
+          error: 'Hosted card disponível apenas para sessões de cartão.',
+          code: 'INVALID_METHOD',
+        });
+        return;
+      }
+
+      const hosted = issueHostedCardToken({
+        sessionPublicId: session.sessionPublicId,
+        amountCents: session.amountCents,
+        description: session.description,
+      });
+
+      const appOrigin = process.env.APP_URL?.trim() || 'http://localhost:3000';
+      res.status(201).json({
+        paymentToken: hosted.token,
+        redirectUrl: `${appOrigin.replace(/\/+$/, '')}/hosted-card/${hosted.token}`,
+        amountCents: hosted.amountCents,
+        brandLabel: hosted.brandLabel,
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/hosted-card/:token', async (req, res, next) => {
+    try {
+      const token = z.string().min(8).parse(req.params.token);
+      const hosted = getHostedCardToken(token);
+      if (!hosted) {
+        res.status(404).json({ error: 'Token de cartão inválido.', code: 'NOT_FOUND' });
+        return;
+      }
+      res.json({
+        hostedCard: {
+          token: hosted.token,
+          sessionPublicId: hosted.sessionPublicId,
+          amountCents: hosted.amountCents,
+          description: hosted.description,
+          brandLabel: hosted.brandLabel,
+          confirmed: Boolean(hosted.confirmedAt),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  const confirmHostedCardSchema = z.object({
+    cardLast4: z.string().regex(/^\d{4}$/),
+    cardBrand: z.string().min(2).max(40),
+  });
+
+  router.post('/hosted-card/:token/confirm', async (req, res, next) => {
+    try {
+      const token = z.string().min(8).parse(req.params.token);
+      const body = confirmHostedCardSchema.parse(req.body);
+      const hosted = confirmHostedCardToken(token, body.cardLast4, body.cardBrand);
+      if (!hosted) {
+        res.status(404).json({ error: 'Token de cartão inválido.', code: 'NOT_FOUND' });
+        return;
+      }
+
+      const session = await checkoutStore.getByPublicId(hosted.sessionPublicId);
+      if (session?.paymentId) {
+        await checkoutStore.updateByPaymentId(session.paymentId, 'PENDING_CARD_CAPTURE');
+      }
+
+      res.json({
+        ok: true,
+        paymentToken: hosted.token,
+        cardLast4: hosted.cardLast4,
+        status: 'PENDING_CARD_CAPTURE',
+        message:
+          'Token registrado. Dados completos do cartão permanecem no processador (sem PAN no NextPay).',
       });
     } catch (error) {
       next(error);

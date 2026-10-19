@@ -4,8 +4,14 @@ import path from 'path';
 import { defineConfig } from 'vite';
 
 export default defineConfig(() => {
+  const demoModeDefault = process.env.NODE_ENV === 'production' ? 'false' : 'true';
   return {
     plugins: [react(), tailwindcss()],
+    define: {
+      'import.meta.env.VITE_DEMO_MODE': JSON.stringify(
+        process.env.VITE_DEMO_MODE ?? demoModeDefault,
+      ),
+    },
     resolve: {
       alias: {
         '@': path.resolve(import.meta.dirname, '.'),
