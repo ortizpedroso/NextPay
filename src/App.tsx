@@ -6,6 +6,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
+import { MerchantSessionBar } from './components/merchant/MerchantSessionBar';
 import { DashboardView } from './views/DashboardView';
 import { ProductsView } from './views/ProductsView';
 import { PaymentLinksView } from './views/PaymentLinksView';
@@ -39,6 +40,7 @@ import { parseBRLToCents } from './lib/format';
 import { hasDashboardSession } from './lib/api/dashboardAuth';
 import { resolvePublicCheckout, type PublicCheckoutPayload } from './lib/api/publicCheckout';
 import { isDemoMode } from './lib/demoMode';
+import { fetchMerchantProfile, type MerchantProfileDto } from './lib/api/merchantProfile';
 import { HostedCardView } from './views/HostedCardView';
 import { SimularVendaView } from './views/SimularVendaView';
 
@@ -54,6 +56,7 @@ export default function App() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [availableBalance, setAvailableBalance] = useState(0);
   const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetricsDto | null>(null);
+  const [merchantProfile, setMerchantProfile] = useState<MerchantProfileDto | null>(null);
 
   const [publicCheckoutContext, setPublicCheckoutContext] = useState<PublicCheckoutPayload | null>(
     null,
@@ -61,21 +64,29 @@ export default function App() {
 
   const refreshFromApi = useCallback(async () => {
     if (!hasDashboardSession()) {
+      setMerchantProfile(null);
       return;
     }
-    const [ledgerRows, customerRows, productRows, linkRows, metrics] = await Promise.all([
+    const [ledgerRows, customerRows, productRows, linkRows, metrics, profile] = await Promise.all([
       fetchLedgerTransactions(),
       fetchMerchantCustomers(),
       fetchCatalogProducts(),
       fetchPaymentLinks(),
       fetchDashboardMetrics(),
+      fetchMerchantProfile(),
     ]);
+    if (profile) {
+      setMerchantProfile(profile);
+      setAvailableBalance(profile.availableBalanceCents / 100);
+    }
     if (metrics) {
       setDashboardMetrics(metrics);
     }
     if (ledgerRows.length > 0) {
       setTransactions(ledgerRows.map(ledgerRowToTransaction));
-      setAvailableBalance(sumAvailableBalanceCents(ledgerRows) / 100);
+      if (!profile) {
+        setAvailableBalance(sumAvailableBalanceCents(ledgerRows) / 100);
+      }
     }
     if (customerRows.length > 0) {
       setClients(customerRows.map(merchantCustomerToClientRow));
@@ -354,9 +365,17 @@ export default function App() {
             isOpenMobile={isMobileSidebarOpen}
             onCloseMobile={() => setIsMobileSidebarOpen(false)}
             availableBalance={availableBalance}
+            merchantProfile={merchantProfile}
           />
 
           <div className="lg:pl-64 flex flex-col min-h-screen">
+            <div className="xl:hidden px-4 pt-20 pb-2">
+              <MerchantSessionBar
+                onSessionChanged={() => void refreshFromApi()}
+                onShowToast={showToast}
+              />
+            </div>
+
             <Header
               onOpenNewCharge={() => setIsNewChargeModalOpen(true)}
               onOpenNewLink={() => setCurrentView('cobrancas-e-links')}
@@ -367,6 +386,8 @@ export default function App() {
               }}
               onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
               onShowToast={showToast}
+              merchantProfile={merchantProfile}
+              onSessionChanged={() => void refreshFromApi()}
             />
 
             <main className="w-full pt-16 bg-surface min-h-screen flex-1">
@@ -375,6 +396,7 @@ export default function App() {
                   transactions={transactions}
                   availableBalance={availableBalance}
                   metrics={dashboardMetrics}
+                  merchantProfile={merchantProfile}
                   onOpenWithdraw={() => setIsWithdrawModalOpen(true)}
                   onOpenReceipt={(tx) =>
                     setReceiptModalData({
@@ -484,6 +506,7 @@ export default function App() {
         isOpen={isWithdrawModalOpen}
         onClose={() => setIsWithdrawModalOpen(false)}
         availableBalance={availableBalance}
+        merchantProfile={merchantProfile}
         onConfirmWithdraw={handleConfirmWithdraw}
         onShowToast={showToast}
       />

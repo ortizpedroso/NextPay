@@ -6,7 +6,7 @@ This document records product and technical choices for the full-implementation 
 
 - [x] Phase A: Branch, DECISIONS.md, docker-compose, admin merchant onboarding
 - [x] Phase B: Withdrawals (Prisma), JWT withdraw, subscription job security, rate limit
-- [ ] Phase C: Shell login, subscriptions CRUD UI, profile/balance from API, dashboard cleanup
+- [x] Phase C: Shell login, subscriptions CRUD UI, profile/balance from API, dashboard cleanup
 - [ ] Phase D: Integrations connect/disconnect, WooCommerce inbound webhook stub
 - [ ] Phase E: P2 minimal pages (Antecipação, Tap, NF)
 - [ ] Phase F: CI e2e, README, final checklist

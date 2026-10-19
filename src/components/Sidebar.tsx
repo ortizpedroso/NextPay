@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import type { MerchantProfileDto } from '../lib/api/merchantProfile';
+import { isDemoMode } from '../lib/demoMode';
 import { NEXTPAY_ACCOUNT } from '../data/mockData';
 
 interface NavItem {
@@ -14,6 +16,7 @@ interface SidebarProps {
   isOpenMobile: boolean;
   onCloseMobile: () => void;
   availableBalance: number;
+  merchantProfile: MerchantProfileDto | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -22,7 +25,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
   availableBalance,
+  merchantProfile,
 }) => {
+  const accountEmail = merchantProfile?.email ?? (isDemoMode() ? NEXTPAY_ACCOUNT.email : '—');
+  const displayName = merchantProfile?.displayName ?? (isDemoMode() ? NEXTPAY_ACCOUNT.companyName : 'Lojista');
   const [showBalance, setShowBalance] = useState(true);
 
   const mainNav: NavItem[] = [
@@ -218,7 +224,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex flex-col gap-1 text-[11px]">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-on-surface truncate">
-                {NEXTPAY_ACCOUNT.email}
+                {accountEmail}
               </span>
               <span className="px-1.5 py-0.2 rounded bg-secondary-container text-on-secondary-container text-[9px] font-bold">
                 Verificado
@@ -226,15 +232,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="text-on-surface-variant text-[10px] leading-tight">
               <span>
-                Banco: <strong>{NEXTPAY_ACCOUNT.bankCode}</strong> - {NEXTPAY_ACCOUNT.bankName}
+                {displayName}
               </span>
             </div>
             <div className="flex items-center justify-between text-outline text-[10px]">
               <span>
-                Ag: <strong>{NEXTPAY_ACCOUNT.agency}</strong>
+                ID: <strong>{merchantProfile?.merchantId ?? '—'}</strong>
               </span>
               <span>
-                Conta: <strong>{NEXTPAY_ACCOUNT.account}</strong>
+                Saldo API: <strong>R$ {availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
               </span>
             </div>
           </div>
