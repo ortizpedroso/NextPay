@@ -7,13 +7,45 @@ import type { PrismaProcessorCredentialRepository } from '../../vault/prismaCred
 
 const environmentParamSchema = z.enum(['SANDBOX', 'PRODUCTION']);
 
-const upsertBodySchema = z.object({
-  apiAccessToken: z.string().min(16).max(512),
-});
+const upsertBodySchema = z
+  .object({
+    apiAccessToken: z.string().min(16).max(512).optional(),
+    webhookToken: z.string().min(8).max(256).optional(),
+    walletId: z.string().min(1).max(128).optional(),
+  })
+  .refine(
+    (body) =>
+      body.apiAccessToken !== undefined ||
+      body.webhookToken !== undefined ||
+      body.walletId !== undefined,
+    { message: 'Informe ao menos um campo para salvar.' },
+  );
+
+function serializeAdminCredentialView(
+  environment: VaultEnvironment,
+  view: NonNullable<Awaited<ReturnType<PrismaProcessorCredentialRepository['getAdminMaskedView']>>>,
+) {
+  return {
+    environment,
+    maskedToken: view.maskedApiToken,
+    maskedApiToken: view.maskedApiToken,
+    maskedWebhookToken: view.maskedWebhookToken,
+    maskedWalletId: view.maskedWalletId,
+    configured: view.configuredApi,
+    configuredApi: view.configuredApi,
+    configuredWebhook: view.configuredWebhook,
+    configuredWallet: view.configuredWallet,
+    rotationVersion: view.rotationVersion,
+  };
+}
 
 export type CredentialRepositoryPort = Pick<
   PrismaProcessorCredentialRepository,
-  'upsertCredential' | 'getMasked' | 'decryptApiToken' | 'markValidated'
+  | 'upsertCredential'
+  | 'getAdminMaskedView'
+  | 'decryptApiToken'
+  | 'decryptCredential'
+  | 'markValidated'
 >;
 
 export function createAdminCredentialsRouter(
@@ -27,7 +59,7 @@ export function createAdminCredentialsRouter(
         req.params.environment?.toUpperCase(),
       ) as VaultEnvironment;
 
-      const masked = await credentialRepository.getMasked(environment);
+      const masked = await credentialRepository.getAdminMaskedView(environment);
       if (!masked) {
         res.status(404).json({
           error: 'Credencial não configurada para este ambiente.',
@@ -37,12 +69,7 @@ export function createAdminCredentialsRouter(
         return;
       }
 
-      res.json({
-        environment,
-        maskedToken: masked.maskedDisplay,
-        rotationVersion: masked.rotationVersion,
-        configured: true,
-      });
+      res.json(serializeAdminCredentialView(environment, masked));
     } catch (error) {
       next(error);
     }
@@ -55,13 +82,10 @@ export function createAdminCredentialsRouter(
       ) as VaultEnvironment;
       const body = upsertBodySchema.parse(req.body);
 
-      const stored = await credentialRepository.upsertCredential(environment, body.apiAccessToken);
+      const { masked } = await credentialRepository.upsertCredential(environment, body);
 
       res.status(200).json({
-        environment,
-        maskedToken: stored.maskedDisplay,
-        rotationVersion: stored.rotationVersion,
-        configured: true,
+        ...serializeAdminCredentialView(environment, masked),
         message: 'Credencial armazenada com sucesso.',
       });
     } catch (error) {

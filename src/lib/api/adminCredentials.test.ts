@@ -29,8 +29,14 @@ describe('adminCredentials API client', () => {
         JSON.stringify({
           environment: 'SANDBOX',
           maskedToken: 'np_sec_••••••••••••9abc',
+          maskedApiToken: 'np_sec_••••••••••••9abc',
+          maskedWebhookToken: null,
+          maskedWalletId: null,
           rotationVersion: 1,
           configured: true,
+          configuredApi: true,
+          configuredWebhook: false,
+          configuredWallet: false,
         }),
         { status: 200 },
       ),
@@ -61,10 +67,10 @@ describe('adminCredentials API client', () => {
       ),
     );
 
-    const result = await upsertProcessorCredential(
-      'PRODUCTION',
-      'np_sec_production_0123456789abcdef0123456789ab',
-    );
+    const result = await upsertProcessorCredential('PRODUCTION', {
+      apiAccessToken: 'np_sec_production_0123456789abcdef0123456789ab',
+      webhookToken: 'webhook-secret-0123456789ab',
+    });
     expect(result.rotationVersion).toBe(2);
   });
 

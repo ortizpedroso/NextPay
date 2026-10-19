@@ -13,16 +13,7 @@ import {
   InMemoryPaymentLinkStore,
 } from '../createApp';
 import { InMemoryWebhookEventStore } from '../payments/webhookEventStore';
-import type { CredentialRepositoryPort } from './routes/adminCredentials.routes';
-
-function mockCredentialRepository(): CredentialRepositoryPort {
-  return {
-    upsertCredential: vi.fn(),
-    getMasked: vi.fn(),
-    decryptApiToken: vi.fn(async () => 'np_sec_test_0123456789abcdef0123456789ab'),
-    markValidated: vi.fn(),
-  };
-}
+import { mockCredentialRepository } from './testHelpers/mockCredentialRepository';
 
 describe('Remaining phases — public links, JWT, webhooks stats', () => {
   const adminToken = 'test-admin-token-0123456789';
@@ -40,7 +31,10 @@ describe('Remaining phases — public links, JWT, webhooks stats', () => {
 
   function buildApp() {
     return createApp({
-      credentialRepository: mockCredentialRepository(),
+      credentialRepository: {
+        ...mockCredentialRepository(),
+        decryptApiToken: vi.fn(async () => 'np_sec_test_0123456789abcdef0123456789ab'),
+      },
       resolvePaymentGateway: async () => new InMemoryPaymentGateway('SANDBOX'),
       webhookEventStore: new InMemoryWebhookEventStore(),
       checkoutSessionStore: new InMemoryCheckoutSessionStore(),
@@ -152,7 +146,10 @@ describe('Remaining phases — public links, JWT, webhooks stats', () => {
     process.env.MERCHANT_WEBHOOK_URL = 'https://merchant.example/webhooks';
     const outbound = new InMemoryOutboundWebhookService();
     const app = createApp({
-      credentialRepository: mockCredentialRepository(),
+      credentialRepository: {
+        ...mockCredentialRepository(),
+        decryptApiToken: vi.fn(async () => 'np_sec_test_0123456789abcdef0123456789ab'),
+      },
       resolvePaymentGateway: async () => new InMemoryPaymentGateway('SANDBOX'),
       webhookEventStore: new InMemoryWebhookEventStore(),
       checkoutSessionStore: new InMemoryCheckoutSessionStore(),

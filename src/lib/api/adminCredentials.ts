@@ -5,8 +5,20 @@ export type ApiGatewayEnvironment = 'SANDBOX' | 'PRODUCTION';
 export type MaskedCredentialResponse = {
   environment: ApiGatewayEnvironment;
   maskedToken: string;
+  maskedApiToken: string;
+  maskedWebhookToken: string | null;
+  maskedWalletId: string | null;
   rotationVersion: number;
   configured: boolean;
+  configuredApi: boolean;
+  configuredWebhook: boolean;
+  configuredWallet: boolean;
+};
+
+export type ProcessorCredentialUpsertPayload = {
+  apiAccessToken?: string;
+  webhookToken?: string;
+  walletId?: string;
 };
 
 export type ConnectivityTestResponse = {
@@ -52,12 +64,12 @@ export async function fetchMaskedCredential(
 
 export async function upsertProcessorCredential(
   environment: ApiGatewayEnvironment,
-  apiAccessToken: string,
+  payload: ProcessorCredentialUpsertPayload,
 ): Promise<MaskedCredentialResponse> {
   const response = await fetch(`/api/v1/admin/credentials/${environment}`, {
     method: 'PUT',
     headers: authHeaders(),
-    body: JSON.stringify({ apiAccessToken }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {

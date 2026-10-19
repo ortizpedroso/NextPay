@@ -48,6 +48,30 @@ describe('ProcessorCredentialVaultService', () => {
     expect(decrypted.apiAccessToken).toContain('production');
   });
 
+  it('criptografa webhook e wallet no mesmo payload', () => {
+    const vault = ProcessorCredentialVaultService.fromEnvironment({
+      MASTER_ENCRYPTION_KEY: MASTER_B64,
+    } as NodeJS.ProcessEnv);
+
+    const stored = vault.encryptForStorage('PRODUCTION', {
+      apiAccessToken: 'np_sec_production_0123456789abcdef0123456789ab',
+      webhookToken: 'webhook-secret-0123456789ab',
+      walletId: 'wallet-root-0123456789',
+    });
+
+    const decrypted = vault.decryptFromStorage({
+      ciphertext: stored.ciphertext,
+      rotationVersion: stored.rotationVersion,
+    });
+
+    expect(decrypted.webhookToken).toBe('webhook-secret-0123456789ab');
+    expect(decrypted.walletId).toBe('wallet-root-0123456789');
+
+    const masked = vault.toAdminMaskedView('PRODUCTION', decrypted, stored.rotationVersion);
+    expect(masked.configuredWebhook).toBe(true);
+    expect(masked.configuredWallet).toBe(true);
+  });
+
   it('rejeita token curto', () => {
     const vault = ProcessorCredentialVaultService.fromEnvironment({
       MASTER_ENCRYPTION_KEY: MASTER_B64,

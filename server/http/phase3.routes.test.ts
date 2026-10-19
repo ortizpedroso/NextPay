@@ -10,16 +10,7 @@ import {
 } from '../createApp';
 import { InMemoryIdempotencyStore } from '../payments/inMemoryIdempotencyStore';
 import { InMemoryWebhookEventStore } from '../payments/webhookEventStore';
-import type { CredentialRepositoryPort } from './routes/adminCredentials.routes';
-
-function mockCredentialRepository(): CredentialRepositoryPort {
-  return {
-    upsertCredential: vi.fn(),
-    getMasked: vi.fn(),
-    decryptApiToken: vi.fn(async () => 'np_sec_sandbox_0123456789abcdef0123456789ab'),
-    markValidated: vi.fn(),
-  };
-}
+import { mockCredentialRepository } from './testHelpers/mockCredentialRepository';
 
 describe('Phase 3 payments & webhooks API', () => {
   const adminToken = 'test-admin-token-0123456789';
@@ -96,6 +87,23 @@ describe('Phase 3 payments & webhooks API', () => {
     expect(first.body.status).toBe('processed');
     expect(second.status).toBe(200);
     expect(second.body.status).toBe('duplicate_ignored');
+  });
+
+  it('POST /api/v1/webhooks/inbound aceita cabeçalho asaas-access-token', async () => {
+    const app = buildApp();
+
+    const payload = {
+      event: 'PAYMENT_CONFIRMED',
+      payment: { id: 'ext-pay-asaas-01', value: 99.9, status: 'CONFIRMED' },
+    };
+
+    const res = await request(app)
+      .post('/api/v1/webhooks/inbound')
+      .set('asaas-access-token', webhookSecret)
+      .send(payload);
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('processed');
   });
 
   it('rejeita webhook sem token', async () => {

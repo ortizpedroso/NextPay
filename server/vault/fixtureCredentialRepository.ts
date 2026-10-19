@@ -1,5 +1,10 @@
 import type { CredentialRepositoryPort } from '../http/routes/adminCredentials.routes';
-import type { StoredCredentialRecord, VaultEnvironment } from './processorCredentialVault';
+import type {
+  AdminCredentialMaskedView,
+  ProcessorCredentialPlaintext,
+  ProcessorCredentialUpsertPatch,
+  VaultEnvironment,
+} from './processorCredentialVault';
 
 const DISABLED =
   'Vault de credenciais indisponível em PAYMENT_GATEWAY_MODE=fixture. Configure MASTER_ENCRYPTION_KEY e remova o modo fixture para gerenciar credenciais.';
@@ -7,13 +12,16 @@ const DISABLED =
 export class FixtureCredentialRepository implements CredentialRepositoryPort {
   async upsertCredential(
     _environment: VaultEnvironment,
-    _apiAccessToken: string,
-    _rotationVersion?: number,
-  ): Promise<StoredCredentialRecord> {
+    _patch: ProcessorCredentialUpsertPatch,
+  ): Promise<{ record: never; masked: AdminCredentialMaskedView }> {
     throw new Error(DISABLED);
   }
 
-  async getMasked(_environment: VaultEnvironment): Promise<null> {
+  async getAdminMaskedView(_environment: VaultEnvironment): Promise<null> {
+    return null;
+  }
+
+  async decryptCredential(_environment: VaultEnvironment): Promise<ProcessorCredentialPlaintext | null> {
     return null;
   }
 

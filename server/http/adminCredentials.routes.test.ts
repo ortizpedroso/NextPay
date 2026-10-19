@@ -10,23 +10,34 @@ vi.mock('../gateway/paymentGatewayFactory', () => ({
 }));
 
 function createMockRepository(): CredentialRepositoryPort {
+  const maskedView = {
+    environment: 'SANDBOX' as const,
+    maskedApiToken: 'np_sec_••••••••••••9abc',
+    maskedWebhookToken: 'webhook_••••••••••••9abc',
+    maskedWalletId: 'wallet-_••••••••••••9abc',
+    configuredApi: true,
+    configuredWebhook: true,
+    configuredWallet: true,
+    rotationVersion: 1,
+  };
+
   return {
-    upsertCredential: vi.fn(async (environment, _apiAccessToken) => ({
-      environment,
-      ciphertext: 'cipher',
-      prefixHint: 'np_sec',
-      suffixHint: '9abc',
-      rotationVersion: 1,
-      maskedDisplay: 'np_sec_••••••••••••9abc',
+    upsertCredential: vi.fn(async (environment) => ({
+      record: {
+        environment,
+        ciphertext: 'cipher',
+        prefixHint: 'np_sec',
+        suffixHint: '9abc',
+        rotationVersion: 1,
+        maskedDisplay: 'np_sec_••••••••••••9abc',
+      },
+      masked: { ...maskedView, environment },
     })),
-    getMasked: vi.fn(async (environment) => ({
+    getAdminMaskedView: vi.fn(async (environment) => ({
+      ...maskedView,
       environment,
-      ciphertext: 'cipher',
-      prefixHint: 'np_sec',
-      suffixHint: '9abc',
-      rotationVersion: 1,
-      maskedDisplay: 'np_sec_••••••••••••9abc',
     })),
+    decryptCredential: vi.fn(async () => null),
     decryptApiToken: vi.fn(async () => 'np_sec_sandbox_0123456789abcdef0123456789ab'),
     markValidated: vi.fn(async () => undefined),
   };
@@ -63,6 +74,7 @@ describe('Admin credentials API', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.maskedToken).toContain('np_sec');
+    expect(res.body.maskedWebhookToken).toContain('webhook');
     expect(JSON.stringify(res.body)).not.toMatch(/asaas/i);
   });
 
@@ -73,10 +85,15 @@ describe('Admin credentials API', () => {
     const res = await request(app)
       .put('/api/v1/admin/credentials/PRODUCTION')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ apiAccessToken: 'np_sec_production_0123456789abcdef0123456789ab' });
+      .send({
+        apiAccessToken: 'np_sec_production_0123456789abcdef0123456789ab',
+        webhookToken: 'webhook-secret-0123456789ab',
+        walletId: 'wallet-root-0123456789',
+      });
 
     expect(res.status).toBe(200);
     expect(repo.upsertCredential).toHaveBeenCalledOnce();
+    expect(res.body.configuredWebhook).toBe(true);
   });
 
   it('POST test conectividade usa gateway e marca validação', async () => {
