@@ -123,7 +123,13 @@ As seguintes variáveis de ambiente são utilizadas pelo NextPay:
 7. **Checkout cartão (white-label)**: sessões `CREDIT_CARD` redirecionam para `/hosted-card/:token` — sem armazenamento de PAN; confirmação stub usa apenas últimos 4 dígitos.
 8. **Saques**: rotas `/api/v1/withdrawals` operam em modo stub até credenciais reais de Pix-out do processador; consulte status via `GET /api/v1/withdrawals/:protocol`.
 9. **Build & start**: `npm run build && NODE_ENV=production npm start` (Express serve `dist/` + API na mesma porta).
-10. **Testes**: `npm test` (Vitest + Postgres no CI). E2E opcional: `npx playwright install chromium && npm run test:e2e`.
+10. **Testes**: `npm test` (Vitest + Postgres no CI). E2E: `npx playwright install chromium && npm run test:e2e` (também no GitHub Actions).
+11. **Onboarding SaaS**: `POST /api/v1/admin/merchants` (Bearer `ADMIN_API_TOKEN`) cria tenant e usuário opcional.
+12. **Jobs internos**: `POST /api/v1/jobs/process-subscription-renewals` com `INTERNAL_JOB_TOKEN` (não exposto ao painel).
+
+### Escopo PCI (cartão hosted)
+
+O fluxo `/hosted-card/:token` **não** persiste PAN/CVV no NextPay: apenas últimos 4 dígitos e confirmação stub. Em produção, redirecione ou tokenize via iframe/certificado do processador certificado PCI. O painel merchant não deve receber dados de cartão completos — mantenha tokenização no domínio do adquirente ou SAQ A-EP equivalente.
 
 ---
 
