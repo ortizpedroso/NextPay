@@ -131,7 +131,12 @@ describe('Remaining phases — public links, JWT, webhooks stats', () => {
       .set(
         'Authorization',
         `Bearer ${signMerchantJwt(
-          { sub: 'm', email: 'lojista@nextpay.test', role: 'merchant' },
+          {
+            sub: 'm',
+            merchantId: 'np_merchant_default',
+            email: 'lojista@nextpay.test',
+            role: 'merchant',
+          },
           jwtSecret,
         )}`,
       );

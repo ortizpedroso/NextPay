@@ -118,6 +118,50 @@ export async function fetchCatalogProducts(): Promise<CatalogProductDto[]> {
   return json.products;
 }
 
+export async function updateCatalogProduct(
+  productPublicId: string,
+  patch: Partial<{
+    title: string;
+    description: string;
+    priceCents: number;
+    status: 'ACTIVE' | 'ARCHIVED';
+    maxInstallments: number;
+    badge: string;
+  }>,
+): Promise<CatalogProductDto> {
+  const response = await fetch(`/api/v1/products/${encodeURIComponent(productPublicId)}`, {
+    method: 'PATCH',
+    headers: dashboardAuthHeaders(),
+    body: JSON.stringify(patch),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? 'Falha ao atualizar produto.');
+  }
+  const json = (await response.json()) as { product: CatalogProductDto };
+  return json.product;
+}
+
+export async function createMerchantCustomer(input: {
+  name: string;
+  email: string;
+  document: string;
+}): Promise<{ customerId: string; name: string; email: string; document: string }> {
+  const response = await fetch('/api/v1/customers', {
+    method: 'POST',
+    headers: dashboardAuthHeaders(),
+    body: JSON.stringify({ ...input, environment: 'SANDBOX' }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? 'Falha ao cadastrar cliente.');
+  }
+  const json = (await response.json()) as {
+    customer: { customerId: string; name: string; email: string; document: string };
+  };
+  return json.customer;
+}
+
 export async function createCatalogProduct(input: {
   title: string;
   description?: string;

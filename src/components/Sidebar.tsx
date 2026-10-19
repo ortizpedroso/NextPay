@@ -30,7 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'clientes', label: 'Meus Clientes', icon: 'group' },
     { id: 'cobrancas-e-links', label: 'Cobranças', icon: 'receipt_long' },
     { id: 'links-pagamento', label: 'Links de Pagamento', icon: 'link' },
-    { id: 'simular-venda', label: 'Simular Venda', icon: 'calculate', disabled: true },
+    { id: 'simular-venda', label: 'Simular Venda', icon: 'calculate' },
     { id: 'pix', label: 'Pix Instantâneo', icon: 'qr_code_2' },
     { id: 'produtos-e-servicos', label: 'Produtos & Serviços', icon: 'inventory_2' },
     { id: 'assinaturas', label: 'Assinaturas (Recorrência)', icon: 'autorenew' },

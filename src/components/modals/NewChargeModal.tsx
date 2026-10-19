@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 import { createAdminPayment } from '../../lib/api/adminOperations';
-import { getAdminBearerToken } from '../../lib/api/adminSession';
+import { dashboardAuthHeaders, hasDashboardSession } from '../../lib/api/dashboardAuth';
 
 interface NewChargeModalProps {
   isOpen: boolean;
@@ -45,13 +45,10 @@ export const NewChargeModal: React.FC<NewChargeModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      if (getAdminBearerToken()) {
+      if (hasDashboardSession()) {
         const customerResponse = await fetch('/api/v1/customers', {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${getAdminBearerToken()}`,
-            'Content-Type': 'application/json',
-          },
+          headers: dashboardAuthHeaders(),
           body: JSON.stringify({
             environment: 'SANDBOX',
             name: clientName.trim(),

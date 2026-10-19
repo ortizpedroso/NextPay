@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ProductItem, PaymentLink } from '../data/mockData';
 import { createCheckoutSession, getCheckoutSession } from '../lib/api/checkoutSession';
+import { startHostedCard } from '../lib/api/hostedCard';
 import type { PublicCheckoutPayload } from '../lib/api/publicCheckout';
 
 interface CheckoutViewProps {
@@ -109,6 +110,11 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
       });
 
       setSessionPublicId(session.sessionPublicId);
+      if (method === 'CREDIT_CARD') {
+        const hosted = await startHostedCard(session.sessionPublicId);
+        window.location.assign(hosted.redirectUrl);
+        return;
+      }
       if (session.pixCopyPaste) {
         setPixCode(session.pixCopyPaste);
       }

@@ -18,16 +18,7 @@ import { QrPixModal } from './components/modals/QrPixModal';
 import { WithdrawModal } from './components/modals/WithdrawModal';
 import { ReceiptModal } from './components/modals/ReceiptModal';
 import { NewChargeModal } from './components/modals/NewChargeModal';
-import {
-  INITIAL_CLIENTS,
-  INITIAL_PRODUCTS,
-  INITIAL_PAYMENT_LINKS,
-  INITIAL_TRANSACTIONS,
-  ProductItem,
-  PaymentLink,
-  Transaction,
-  type ClientRow,
-} from './data/mockData';
+import { ProductItem, PaymentLink, Transaction, type ClientRow } from './data/mockData';
 import {
   createCatalogProduct,
   createPaymentLink,
@@ -35,7 +26,9 @@ import {
   fetchLedgerTransactions,
   fetchMerchantCustomers,
   fetchPaymentLinks,
+  updateCatalogProduct,
 } from './lib/api/adminOperations';
+import { fetchDashboardMetrics, type DashboardMetricsDto } from './lib/api/adminDashboard';
 import { catalogProductToItem, paymentLinkDtoToItem } from './lib/api/catalogMappers';
 import {
   ledgerRowToTransaction,
@@ -45,17 +38,22 @@ import {
 import { parseBRLToCents } from './lib/format';
 import { hasDashboardSession } from './lib/api/dashboardAuth';
 import { resolvePublicCheckout, type PublicCheckoutPayload } from './lib/api/publicCheckout';
+import { isDemoMode } from './lib/demoMode';
+import { HostedCardView } from './views/HostedCardView';
+import { SimularVendaView } from './views/SimularVendaView';
 
 export default function App() {
+  const [hostedCardToken, setHostedCardToken] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<string>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Core reactive data
-  const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
-  const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>(INITIAL_PAYMENT_LINKS);
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
-  const [clients, setClients] = useState<ClientRow[]>(INITIAL_CLIENTS);
-  const [availableBalance, setAvailableBalance] = useState(48920.5);
+  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [paymentLinks, setPaymentLinks] = useState<PaymentLink[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [clients, setClients] = useState<ClientRow[]>([]);
+  const [availableBalance, setAvailableBalance] = useState(0);
+  const [dashboardMetrics, setDashboardMetrics] = useState<DashboardMetricsDto | null>(null);
 
   const [publicCheckoutContext, setPublicCheckoutContext] = useState<PublicCheckoutPayload | null>(
     null,
@@ -65,12 +63,16 @@ export default function App() {
     if (!hasDashboardSession()) {
       return;
     }
-    const [ledgerRows, customerRows, productRows, linkRows] = await Promise.all([
+    const [ledgerRows, customerRows, productRows, linkRows, metrics] = await Promise.all([
       fetchLedgerTransactions(),
       fetchMerchantCustomers(),
       fetchCatalogProducts(),
       fetchPaymentLinks(),
+      fetchDashboardMetrics(),
     ]);
+    if (metrics) {
+      setDashboardMetrics(metrics);
+    }
     if (ledgerRows.length > 0) {
       setTransactions(ledgerRows.map(ledgerRowToTransaction));
       setAvailableBalance(sumAvailableBalanceCents(ledgerRows) / 100);
@@ -91,6 +93,13 @@ export default function App() {
   }, [refreshFromApi]);
 
   useEffect(() => {
+    const hostedMatch = window.location.pathname.match(/^\/hosted-card\/([^/]+)\/?$/);
+    if (hostedMatch?.[1]) {
+      setHostedCardToken(decodeURIComponent(hostedMatch[1]));
+      return;
+    }
+    setHostedCardToken(null);
+
     const match = window.location.pathname.match(/^\/pay\/([^/]+)\/?$/);
     if (!match?.[1]) {
       return;
@@ -211,6 +220,10 @@ export default function App() {
       setProducts((prev) => [catalogProductToItem(created), ...prev]);
       return;
     }
+    if (!isDemoMode()) {
+      showToast('Faça login no painel para cadastrar produtos.');
+      return;
+    }
     const fallback: ProductItem = {
       id: `prod-${Date.now()}`,
       title: input.title,
@@ -245,6 +258,10 @@ export default function App() {
       setPaymentLinks((prev) => [paymentLinkDtoToItem(created), ...prev]);
       return;
     }
+    if (!isDemoMode()) {
+      showToast('Faça login no painel para criar links.');
+      return;
+    }
     const cleanSlug = input.title
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '-')
@@ -267,52 +284,23 @@ export default function App() {
     setPaymentLinks((prev) => [fallback, ...prev]);
   };
 
-  const handleCreateCharge = (charge: {
+  const handleCreateCharge = (_charge: {
     clientName: string;
     description: string;
     amount: number;
     method: 'Pix' | 'Cartão' | 'Boleto';
   }) => {
-    const fee =
-      charge.method === 'Pix'
-        ? 2.48
-        : charge.method === 'Boleto'
-          ? charge.amount * 0.01 + 2.48
-          : charge.amount * 0.0399 + 0.98;
-
-    const net = charge.amount - fee;
-    const profit = charge.method === 'Pix' ? 0.49 : charge.amount * 0.01 + 0.49;
-
-    const newTx: Transaction = {
-      id: `tx-${Date.now()}`,
-      clientName: charge.clientName,
-      clientDoc: '***.000.000-**',
-      avatarInitials: charge.clientName.slice(0, 2).toUpperCase(),
-      description: charge.description,
-      code: `#PAY-${Math.floor(10000 + Math.random() * 90000)}`,
-      method: charge.method,
-      methodDetail:
-        charge.method === 'Pix'
-          ? 'Pix D+0 Instantâneo'
-          : charge.method === 'Cartão'
-            ? 'Cartão 1x'
-            : 'Boleto CIP',
-      date: 'Agora',
-      grossAmount: charge.amount,
-      grossAmountFormatted: `R$ ${charge.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      gatewayFeeFormatted: `- R$ ${fee.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      gatewayProfitFormatted: `+ R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      netAmountFormatted: `R$ ${net.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      status: charge.method === 'Pix' ? 'Liquidado' : 'Aguardando',
-      dueDate: 'Hoje',
-    };
-
-    setTransactions([newTx, ...transactions]);
-
-    if (charge.method === 'Pix') {
-      setAvailableBalance((prev) => prev + net);
-    }
     void refreshFromApi();
+  };
+
+  const handlePatchProduct = async (productPublicId: string, priceCents: number) => {
+    if (!hasDashboardSession()) {
+      return;
+    }
+    const updated = await updateCatalogProduct(productPublicId, { priceCents });
+    setProducts((prev) =>
+      prev.map((item) => (item.id === productPublicId ? catalogProductToItem(updated) : item)),
+    );
   };
 
   const handleConfirmWithdraw = (amount: number) => {
@@ -328,6 +316,10 @@ export default function App() {
     setCheckoutItem(link);
     setCurrentView('checkout');
   };
+
+  if (hostedCardToken) {
+    return <HostedCardView token={hostedCardToken} onShowToast={showToast} />;
+  }
 
   return (
     <div className="min-h-screen bg-surface font-body-md text-body-md text-on-surface antialiased flex flex-col">
@@ -382,6 +374,7 @@ export default function App() {
                 <DashboardView
                   transactions={transactions}
                   availableBalance={availableBalance}
+                  metrics={dashboardMetrics}
                   onOpenWithdraw={() => setIsWithdrawModalOpen(true)}
                   onOpenReceipt={(tx) =>
                     setReceiptModalData({
@@ -405,6 +398,7 @@ export default function App() {
                 <ClientsView
                   clients={clients}
                   onShowToast={showToast}
+                  onClientCreated={() => void refreshFromApi()}
                   onOpenNewChargeForClient={(_clientName) => {
                     setIsNewChargeModalOpen(true);
                   }}
@@ -439,8 +433,14 @@ export default function App() {
               {currentView === 'produtos-e-servicos' && (
                 <ProductsView
                   products={products}
+                  metrics={dashboardMetrics}
                   onOpenDrawer={() => setIsProductDrawerOpen(true)}
                   onOpenCheckoutWithProduct={handleOpenCheckoutWithProduct}
+                  onUpdateProductPrice={(productId, priceCents) =>
+                    void handlePatchProduct(productId, priceCents).then(() =>
+                      showToast('Preço atualizado via API.'),
+                    )
+                  }
                   onShowToast={showToast}
                 />
               )}
@@ -451,6 +451,8 @@ export default function App() {
                   onNavigate={(viewId) => setCurrentView(viewId)}
                 />
               )}
+
+              {currentView === 'simular-venda' && <SimularVendaView onShowToast={showToast} />}
 
               {(currentView === 'integracoes-e-api' ||
                 currentView === 'configuracoes-de-taxas') && (

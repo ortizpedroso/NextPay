@@ -10,6 +10,8 @@ import type { CheckoutSessionStore } from './checkout/checkoutSessionStore';
 import { createPaymentGatewayForEnvironment } from './gateway/paymentGatewayFactory';
 import type { IdempotencyStore } from './gateway/payment-gateway.interface';
 import { requireAdminApiToken } from './http/middleware/adminAuth';
+import { requireInternalOrAdminToken } from './http/middleware/internalOrAdminAuth';
+import { requireSandboxEnvironment } from './http/middleware/sandboxOnly';
 import { requireDashboardAuth } from './http/middleware/dashboardAuth';
 import { requireMerchantApiKey } from './http/middleware/merchantAuth';
 import { errorHandler } from './http/middleware/errorHandler';
@@ -39,6 +41,16 @@ import { createPublicPaymentLinksRouter } from './http/routes/publicPaymentLinks
 import { createTransactionsRouter } from './http/routes/transactions.routes';
 import { createWebhooksRouter } from './http/routes/webhooks.routes';
 import { createWithdrawalsRouter } from './http/routes/withdrawals.routes';
+import { createSubscriptionsRouter } from './http/routes/subscriptions.routes';
+import {
+  InMemorySubscriptionStore,
+  PrismaSubscriptionStore,
+} from './subscriptions/subscriptionStore';
+import type { SubscriptionStore } from './subscriptions/subscriptionStore';
+import { createMerchantApiKeysRouter } from './http/routes/merchantApiKeys.routes';
+import { createMerchantIntegrationsRouter } from './http/routes/merchantIntegrations.routes';
+import { createJobsRouter } from './http/routes/jobs.routes';
+import { createSandboxRouter } from './http/routes/sandbox.routes';
 import { InMemoryLedgerStore, PrismaLedgerStore } from './payments/ledgerStore';
 import type { LedgerStore } from './payments/ledgerStore';
 import {
@@ -50,6 +62,9 @@ import type { OutboundWebhookService } from './payments/outboundWebhookService';
 import { PrismaMerchantCustomerStore } from './payments/prismaMerchantCustomerStore';
 import { PrismaWebhookEventStore } from './payments/webhookEventStore';
 import type { WebhookEventStore } from './payments/webhookEventStore';
+import { resolveDefaultGatewayEnvironment } from './config/gatewayEnvironment';
+import { PrismaIdempotencyStore } from './payments/prismaIdempotencyStore';
+import { FixtureCredentialRepository } from './vault/fixtureCredentialRepository';
 import { ProcessorCredentialVaultService } from './vault/processorCredentialVault';
 import { PrismaProcessorCredentialRepository } from './vault/prismaCredentialRepository';
 
@@ -64,6 +79,7 @@ export type CreateAppOptions = {
   outboundWebhookService?: OutboundWebhookService;
   catalogProductStore?: CatalogProductStore;
   paymentLinkStore?: PaymentLinkStore;
+  subscriptionStore?: SubscriptionStore;
 };
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -87,12 +103,7 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use(express.json({ limit: '256kb' }));
 
-  const credentialRepository =
-    options.credentialRepository ??
-    new PrismaProcessorCredentialRepository(
-      prisma,
-      ProcessorCredentialVaultService.fromEnvironment(),
-    );
+  const credentialRepository = options.credentialRepository ?? buildDefaultCredentialRepository();
 
   const resolvePaymentGateway: PaymentGatewayResolver =
     options.resolvePaymentGateway ??
@@ -115,7 +126,9 @@ export function createApp(options: CreateAppOptions = {}) {
 
   const paymentLinkStore = options.paymentLinkStore ?? new PrismaPaymentLinkStore(prisma);
 
-  const idempotencyStore = options.idempotencyStore;
+  const subscriptionStore = options.subscriptionStore ?? new PrismaSubscriptionStore(prisma);
+
+  const idempotencyStore = options.idempotencyStore ?? new PrismaIdempotencyStore(prisma);
 
   app.get('/api/v1/health', (_req, res) => {
     res.json({
@@ -167,17 +180,42 @@ export function createApp(options: CreateAppOptions = {}) {
   app.use('/api/v1/admin/dashboard', requireDashboardAuth, createAdminDashboardRouter(prisma));
 
   app.use(
+    '/api/v1/subscriptions',
+    requireDashboardAuth,
+    createSubscriptionsRouter(subscriptionStore, resolvePaymentGateway),
+  );
+
+  app.use('/api/v1/merchant/api-keys', requireDashboardAuth, createMerchantApiKeysRouter());
+
+  app.use(
+    '/api/v1/merchant/integrations',
+    requireDashboardAuth,
+    createMerchantIntegrationsRouter(),
+  );
+
+  app.use(
     '/api/v1/merchant',
     requireMerchantApiKey,
     createMerchantRouter(catalogProductStore, paymentLinkStore),
   );
+
+  app.use('/api/v1/jobs', requireInternalOrAdminToken, createJobsRouter(outboundWebhookService));
+
+  app.use(
+    '/api/v1/sandbox',
+    requireDashboardAuth,
+    requireSandboxEnvironment,
+    createSandboxRouter(ledgerStore),
+  );
+
+  const webhookGatewayEnvironment = resolveDefaultGatewayEnvironment();
 
   app.use(
     '/api/v1/webhooks',
     createWebhooksRouter(
       resolvePaymentGateway,
       webhookEventStore,
-      'SANDBOX',
+      webhookGatewayEnvironment,
       checkoutSessionStore,
       ledgerStore,
       outboundWebhookService,
@@ -191,6 +229,17 @@ export function createApp(options: CreateAppOptions = {}) {
   return app;
 }
 
+function buildDefaultCredentialRepository(): CredentialRepositoryPort {
+  const mode = process.env.PAYMENT_GATEWAY_MODE?.trim().toLowerCase();
+  if (mode === 'fixture' || mode === 'in_memory') {
+    return new FixtureCredentialRepository();
+  }
+  return new PrismaProcessorCredentialRepository(
+    prisma,
+    ProcessorCredentialVaultService.fromEnvironment(),
+  );
+}
+
 // exported for tests defaults
 export {
   InMemoryCatalogProductStore,
@@ -200,4 +249,5 @@ export {
   InMemoryPaymentLinkStore,
   InMemoryOutboundWebhookService,
   NoopOutboundWebhookService,
+  InMemorySubscriptionStore,
 };

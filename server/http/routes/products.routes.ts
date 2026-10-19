@@ -2,6 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import { buildCheckoutUrl, newProductPublicId, slugifyTitle } from '../../catalog/catalogIds';
+import type { DashboardRequest } from '../../merchant/merchantScope';
+import {
+  resolveMerchantDbIdForRead,
+  resolveMerchantDbIdForWrite,
+} from '../../merchant/merchantScope';
 
 const productCategorySchema = z.enum(['servicos', 'digitais', 'recorrentes', 'projetos']);
 const billingTypeSchema = z.enum(['avulsa', 'recorrente']);
@@ -24,7 +29,7 @@ export type CatalogProductRecord = {
 };
 
 export interface CatalogProductStore {
-  list(includeArchived?: boolean): Promise<CatalogProductRecord[]>;
+  list(includeArchived?: boolean, merchantDbId?: string): Promise<CatalogProductRecord[]>;
   getByPublicId(productPublicId: string): Promise<CatalogProductRecord | null>;
   getBySlugOrPublicId(slugOrId: string): Promise<CatalogProductRecord | null>;
   incrementSales(productPublicId: string): Promise<void>;
@@ -36,6 +41,7 @@ export interface CatalogProductStore {
       productPublicId: string;
       urlSlug: string;
     },
+    merchantDbId: string,
   ): Promise<CatalogProductRecord>;
   update(
     productPublicId: string,
@@ -59,10 +65,15 @@ export interface CatalogProductStore {
 }
 
 export class InMemoryCatalogProductStore implements CatalogProductStore {
-  private readonly rows = new Map<string, CatalogProductRecord>();
+  private readonly rows = new Map<string, CatalogProductRecord & { merchantDbId?: string }>();
 
-  async list(includeArchived = false): Promise<CatalogProductRecord[]> {
-    return [...this.rows.values()].filter((row) => includeArchived || row.status === 'ACTIVE');
+  async list(includeArchived = false, merchantDbId?: string): Promise<CatalogProductRecord[]> {
+    return [...this.rows.values()].filter((row) => {
+      if (merchantDbId && row.merchantDbId && row.merchantDbId !== merchantDbId) {
+        return false;
+      }
+      return includeArchived || row.status === 'ACTIVE';
+    });
   }
 
   async getByPublicId(productPublicId: string): Promise<CatalogProductRecord | null> {
@@ -94,12 +105,14 @@ export class InMemoryCatalogProductStore implements CatalogProductStore {
       productPublicId: string;
       urlSlug: string;
     },
+    merchantDbId: string,
   ): Promise<CatalogProductRecord> {
-    const record: CatalogProductRecord = {
+    const record: CatalogProductRecord & { merchantDbId?: string } = {
       ...input,
       salesCount: 0,
       status: 'ACTIVE',
       checkoutUrl: buildCheckoutUrl(input.urlSlug),
+      merchantDbId,
     };
     this.rows.set(record.productPublicId, record);
     return record;
@@ -166,7 +179,8 @@ export function createProductsRouter(productStore: CatalogProductStore): Router 
   router.get('/', async (req, res, next) => {
     try {
       const includeArchived = req.query.includeArchived === 'true';
-      const products = await productStore.list(includeArchived);
+      const merchantDbId = await resolveMerchantDbIdForRead(req as DashboardRequest);
+      const products = await productStore.list(includeArchived, merchantDbId);
       res.json({ products });
     } catch (error) {
       next(error);
@@ -192,21 +206,26 @@ export function createProductsRouter(productStore: CatalogProductStore): Router 
       const productPublicId = newProductPublicId();
       let urlSlug = body.urlSlug ?? slugifyTitle(body.title);
       urlSlug = `${urlSlug}-${productPublicId.slice(-6)}`;
+      const merchantDbId = await resolveMerchantDbIdForWrite(req as DashboardRequest);
 
-      const product = await productStore.create({
-        productPublicId,
-        urlSlug,
-        title: body.title.trim(),
-        description:
-          body.description?.trim() || 'Descrição dos entregáveis e benefícios inclusos no pacote.',
-        category: body.category,
-        badge: body.badge ?? null,
-        priceCents: body.priceCents,
-        billingType: body.billingType,
-        recurrencyCycle: body.recurrencyCycle ?? null,
-        maxInstallments: body.maxInstallments,
-        imageUrl: body.imageUrl ?? DEFAULT_PRODUCT_IMAGE,
-      });
+      const product = await productStore.create(
+        {
+          productPublicId,
+          urlSlug,
+          title: body.title.trim(),
+          description:
+            body.description?.trim() ||
+            'Descrição dos entregáveis e benefícios inclusos no pacote.',
+          category: body.category,
+          badge: body.badge ?? null,
+          priceCents: body.priceCents,
+          billingType: body.billingType,
+          recurrencyCycle: body.recurrencyCycle ?? null,
+          maxInstallments: body.maxInstallments,
+          imageUrl: body.imageUrl ?? DEFAULT_PRODUCT_IMAGE,
+        },
+        merchantDbId,
+      );
 
       res.status(201).json({ product });
     } catch (error) {

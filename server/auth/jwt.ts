@@ -11,6 +11,7 @@ function base64UrlDecode(input: string): Buffer {
 
 export type MerchantJwtClaims = {
   sub: string;
+  merchantId: string;
   email: string;
   role: 'merchant';
 };
@@ -61,12 +62,17 @@ export function verifyMerchantJwt(token: string, secret: string): MerchantJwtCla
     return null;
   }
 
-  if (parsed.role !== 'merchant' || !parsed.sub || !parsed.email) {
+  const merchantId =
+    typeof (parsed as { merchantId?: string }).merchantId === 'string'
+      ? (parsed as { merchantId: string }).merchantId
+      : parsed.sub;
+
+  if (parsed.role !== 'merchant' || !parsed.sub || !parsed.email || !merchantId) {
     return null;
   }
   if (typeof parsed.exp === 'number' && parsed.exp < Math.floor(Date.now() / 1000)) {
     return null;
   }
 
-  return { sub: parsed.sub, email: parsed.email, role: 'merchant' };
+  return { sub: parsed.sub, merchantId, email: parsed.email, role: 'merchant' };
 }

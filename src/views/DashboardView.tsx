@@ -4,6 +4,12 @@ import { Transaction, NEXTPAY_ACCOUNT } from '../data/mockData';
 interface DashboardViewProps {
   transactions: Transaction[];
   availableBalance: number;
+  metrics?: {
+    ledgerTransactionCount: number;
+    activePaymentLinks: number;
+    activeProducts: number;
+    inboundWebhookEvents: number;
+  } | null;
   onOpenWithdraw: () => void;
   onOpenReceipt: (tx?: Transaction) => void;
   onOpenQrPix: (title: string, price: string) => void;
@@ -14,6 +20,7 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({
   transactions,
   availableBalance,
+  metrics,
   onOpenWithdraw,
   onOpenReceipt,
   onOpenQrPix,
@@ -23,6 +30,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [selectedPeriod, setSelectedPeriod] = useState<'30' | '14' | '7'>('30');
   const [txFilter, setTxFilter] = useState<string>('todos');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const grossFromLedger = transactions.reduce((sum, tx) => sum + tx.grossAmount, 0);
 
   // Filter transactions
   const filteredTransactions = transactions.filter((tx) => {
@@ -224,15 +233,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     R$
                   </span>
                   <span className="font-numeric-lg text-numeric-lg text-on-surface font-bold tracking-tight">
-                    48.450,00
+                    {grossFromLedger.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="inline-flex items-center gap-0.5 text-secondary font-label-md text-label-md font-semibold bg-secondary-container/40 px-1.5 py-0.5 rounded">
-                    <span className="material-symbols-outlined text-[14px]">arrow_upward</span>
-                    +22.4%
+                  <span className="font-body-sm text-body-sm text-outline">
+                    {metrics
+                      ? `${metrics.ledgerTransactionCount} transações • ${metrics.activeProducts} produtos • ${metrics.activePaymentLinks} links`
+                      : `${transactions.length} transações carregadas`}
                   </span>
-                  <span className="font-body-sm text-body-sm text-outline">vs mês anterior</span>
                 </div>
               </div>
             </div>

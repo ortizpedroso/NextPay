@@ -3,15 +3,22 @@ import { ProductItem } from '../data/mockData';
 
 interface ProductsViewProps {
   products: ProductItem[];
+  metrics?: {
+    activeProducts: number;
+    ledgerTransactionCount: number;
+  } | null;
   onOpenDrawer: () => void;
   onOpenCheckoutWithProduct: (product: ProductItem) => void;
+  onUpdateProductPrice?: (productPublicId: string, priceCents: number) => void;
   onShowToast: (msg: string) => void;
 }
 
 export const ProductsView: React.FC<ProductsViewProps> = ({
   products,
+  metrics,
   onOpenDrawer,
   onOpenCheckoutWithProduct,
+  onUpdateProductPrice,
   onShowToast,
 }) => {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
@@ -43,6 +50,26 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     onShowToast(`Link de pagamento para "${product.title}" copiado com sucesso!`);
   };
 
+  const handleAdjustPrice = (product: ProductItem) => {
+    if (!onUpdateProductPrice) {
+      onShowToast('Conecte a sessão do painel para editar preços.');
+      return;
+    }
+    const raw = window.prompt(
+      `Novo preço em centavos para "${product.title}" (atual: ${Math.round(product.price * 100)}):`,
+      String(Math.round(product.price * 100)),
+    );
+    if (!raw) {
+      return;
+    }
+    const priceCents = Number.parseInt(raw, 10);
+    if (!Number.isFinite(priceCents) || priceCents <= 0) {
+      onShowToast('Informe um valor inteiro válido em centavos.');
+      return;
+    }
+    onUpdateProductPrice(product.id, priceCents);
+  };
+
   return (
     <div className="flex flex-col w-full">
       <div className="p-4 lg:p-space-lg max-w-[1540px] mx-auto w-full flex flex-col gap-space-lg">
@@ -54,11 +81,11 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                 Itens no Catálogo
               </span>
               <span className="font-numeric-lg text-numeric-lg text-on-surface mt-space-xs font-bold">
-                {products.length} ativos
+                {metrics?.activeProducts ?? products.length} ativos
               </span>
               <span className="font-body-sm text-body-sm text-secondary flex items-center gap-space-xs mt-0.5 font-medium">
-                <span className="material-symbols-outlined text-[14px]">trending_up</span> +3 novos
-                este mês
+                <span className="material-symbols-outlined text-[14px]">database</span>
+                {metrics?.ledgerTransactionCount ?? 0} vendas no ledger
               </span>
             </div>
             <div className="h-10 w-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
@@ -304,11 +331,11 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                       </button>
                       <button
                         type="button"
-                        disabled
-                        className="h-9 w-9 flex items-center justify-center rounded-lg bg-surface-container text-on-surface-variant/50 cursor-not-allowed"
-                        title="Em breve"
+                        onClick={() => handleAdjustPrice(product)}
+                        className="h-9 w-9 flex items-center justify-center rounded-lg bg-surface-container text-primary hover:bg-surface-container-high transition-colors"
+                        title="Ajustar preço (PATCH catálogo)"
                       >
-                        <span className="material-symbols-outlined text-[18px]">monitoring</span>
+                        <span className="material-symbols-outlined text-[18px]">edit</span>
                       </button>
                     </div>
                     <span className="text-center font-label-sm text-label-sm text-outline">

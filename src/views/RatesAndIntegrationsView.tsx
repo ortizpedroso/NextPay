@@ -2,7 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { AdminSessionBar } from '../components/admin/AdminSessionBar';
 import { MerchantSessionBar } from '../components/merchant/MerchantSessionBar';
 import { INITIAL_WEBHOOK_LOGS, WebhookLog, NEXTPAY_ACCOUNT } from '../data/mockData';
-import { fetchInboundWebhookEvents } from '../lib/api/adminDashboard';
+import {
+  fetchFeeSchedule,
+  fetchInboundWebhookEvents,
+  type FeeScheduleDto,
+} from '../lib/api/adminDashboard';
+import { formatBRL } from '../lib/format';
 import { hasDashboardSession } from '../lib/api/dashboardAuth';
 import {
   fetchMaskedCredential,
@@ -11,6 +16,11 @@ import {
   upsertProcessorCredential,
 } from '../lib/api/adminCredentials';
 import { getAdminBearerToken } from '../lib/api/adminSession';
+import {
+  fetchMerchantIntegrationStatus,
+  type IntegrationPlatform,
+  type IntegrationStatusDto,
+} from '../lib/api/merchantIntegrations';
 
 interface RatesAndIntegrationsViewProps {
   onShowToast: (msg: string) => void;
@@ -36,6 +46,8 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
   // Webhook inspector
   const [selectedLog, setSelectedLog] = useState<WebhookLog | null>(null);
   const [webhookLogs, setWebhookLogs] = useState<WebhookLog[]>([]);
+  const [feeSchedule, setFeeSchedule] = useState<FeeScheduleDto[]>([]);
+  const [integrations, setIntegrations] = useState<IntegrationStatusDto[]>([]);
 
   // Bank display
   const pixKey = NEXTPAY_ACCOUNT.pixKey;
@@ -76,6 +88,16 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
 
   useEffect(() => {
     if (!hasDashboardSession()) {
+      setFeeSchedule([]);
+      return;
+    }
+    void fetchFeeSchedule()
+      .then(setFeeSchedule)
+      .catch(() => setFeeSchedule([]));
+  }, [sessionTick]);
+
+  useEffect(() => {
+    if (!hasDashboardSession()) {
       setWebhookLogs([]);
       return;
     }
@@ -83,6 +105,43 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
       setWebhookLogs(events);
     });
   }, [sessionTick]);
+
+  useEffect(() => {
+    if (!hasDashboardSession()) {
+      setIntegrations([]);
+      return;
+    }
+    void fetchMerchantIntegrationStatus()
+      .then(setIntegrations)
+      .catch(() => setIntegrations([]));
+  }, [sessionTick]);
+
+  const integrationByPlatform = (platform: IntegrationPlatform): IntegrationStatusDto | undefined =>
+    integrations.find((row) => row.platform === platform);
+
+  const integrationBadge = (platform: IntegrationPlatform) => {
+    const row = integrationByPlatform(platform);
+    const status = row?.status ?? 'CONNECTABLE';
+    if (status === 'CONNECTED') {
+      return (
+        <span className="inline-flex items-center gap-1 font-label-sm text-label-sm bg-secondary-container/40 text-on-secondary-container px-2 py-0.5 rounded-full font-medium">
+          <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span> Conectado
+        </span>
+      );
+    }
+    if (status === 'CONNECTABLE') {
+      return (
+        <span className="inline-flex items-center gap-1 font-label-sm text-label-sm bg-surface-container-highest text-on-surface-variant px-2 py-0.5 rounded-full font-medium">
+          Pronto para conectar
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 font-label-sm text-label-sm bg-surface-container-highest text-outline px-2 py-0.5 rounded-full font-medium">
+        Desconectado
+      </span>
+    );
+  };
 
   const handleTestLatency = async () => {
     if (!getAdminBearerToken()) {
@@ -294,6 +353,30 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
               Regra Oficial: Custo Base de Liquidação + Margem do Dono do Gateway
             </span>
           </div>
+
+          {feeSchedule.length > 0 && (
+            <div className="rounded-xl border border-secondary/30 bg-secondary-container/10 p-space-md space-y-3">
+              <h2 className="font-label-md text-label-md text-secondary font-bold uppercase tracking-wide">
+                Tabela oficial (API • centavos)
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-space-sm">
+                {feeSchedule.map((fee) => (
+                  <div
+                    key={fee.id}
+                    className="rounded-lg bg-surface-container-lowest border border-surface-container p-space-sm"
+                  >
+                    <p className="font-semibold text-on-surface">{fee.name}</p>
+                    <p className="text-body-sm text-outline mt-1">{fee.description}</p>
+                    <p className="text-body-sm text-primary font-semibold mt-2">
+                      Cliente: {fee.clientRate.percentage.toFixed(2)}% +{' '}
+                      {formatBRL(fee.clientRate.fixedCents)}
+                    </p>
+                    <p className="text-xs text-outline mt-1">{fee.deadline}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Top 5 Cards (Including Card do Parcelado, Pix at R$ 2,48, Cartão à vista, Boleto) */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-space-md">
@@ -905,9 +988,7 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                         <span className="font-title-md text-title-md text-on-surface font-semibold">
                           WooCommerce / WordPress
                         </span>
-                        <span className="inline-flex items-center gap-1 font-label-sm text-label-sm bg-secondary-container/40 text-on-secondary-container px-2 py-0.5 rounded-full font-medium">
-                          <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span> Ativo
-                        </span>
+                        {integrationBadge('woocommerce')}
                       </div>
                       <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
                         v4.8.2 • Pedidos, Pix dinâmico e cartão salvos em tempo real
@@ -947,9 +1028,7 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                         <span className="font-title-md text-title-md text-on-surface font-semibold">
                           Shopify App
                         </span>
-                        <span className="inline-flex items-center gap-1 font-label-sm text-label-sm bg-secondary-container/40 text-on-secondary-container px-2 py-0.5 rounded-full font-medium">
-                          <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span> Conectado
-                        </span>
+                        {integrationBadge('shopify')}
                       </div>
                       <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
                         Sincronizando loja NextPay
@@ -981,9 +1060,7 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
                         <span className="font-title-md text-title-md text-on-surface font-semibold">
                           Nuvemshop
                         </span>
-                        <span className="inline-flex items-center gap-1 font-label-sm text-label-sm bg-surface-container-highest text-on-surface-variant px-2 py-0.5 rounded-full font-medium">
-                          Pronto para ativar
-                        </span>
+                        {integrationBadge('nuvemshop')}
                       </div>
                       <span className="font-body-sm text-body-sm text-on-surface-variant truncate">
                         Instalação homologada com split automático de comissões
