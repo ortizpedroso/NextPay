@@ -214,7 +214,8 @@ export function createProductsRouter(productStore: CatalogProductStore): Router 
           urlSlug,
           title: body.title.trim(),
           description:
-            body.description?.trim() || 'Descrição dos entregáveis e benefícios inclusos no pacote.',
+            body.description?.trim() ||
+            'Descrição dos entregáveis e benefícios inclusos no pacote.',
           category: body.category,
           badge: body.badge ?? null,
           priceCents: body.priceCents,

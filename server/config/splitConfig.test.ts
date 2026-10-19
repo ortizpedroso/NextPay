@@ -15,9 +15,7 @@ describe('resolveProcessorSplit', () => {
 
   it('retorna split quando carteira configurada', () => {
     const split = resolveProcessorSplit({ amountCents: 10_000 });
-    expect(split).toEqual([
-      { walletId: 'wallet-root', percentualValue: 2, fixedValue: null },
-    ]);
+    expect(split).toEqual([{ walletId: 'wallet-root', percentualValue: 2, fixedValue: null }]);
   });
 
   it('retorna undefined sem carteira', () => {

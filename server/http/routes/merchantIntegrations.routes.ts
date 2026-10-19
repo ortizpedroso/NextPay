@@ -29,8 +29,7 @@ export async function resolveIntegrationStatuses(
   return INTEGRATION_PLATFORMS.map((platform) => {
     const row = byPlatform.get(platform);
     const status =
-      (row?.status as IntegrationStatusDto['status'] | undefined) ??
-      ('CONNECTABLE' as const);
+      (row?.status as IntegrationStatusDto['status'] | undefined) ?? ('CONNECTABLE' as const);
     return {
       platform,
       status: status === 'DISCONNECTED' ? 'CONNECTABLE' : status,

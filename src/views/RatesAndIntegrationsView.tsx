@@ -91,7 +91,9 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
       setFeeSchedule([]);
       return;
     }
-    void fetchFeeSchedule().then(setFeeSchedule).catch(() => setFeeSchedule([]));
+    void fetchFeeSchedule()
+      .then(setFeeSchedule)
+      .catch(() => setFeeSchedule([]));
   }, [sessionTick]);
 
   useEffect(() => {
@@ -109,7 +111,9 @@ export const RatesAndIntegrationsView: React.FC<RatesAndIntegrationsViewProps> =
       setIntegrations([]);
       return;
     }
-    void fetchMerchantIntegrationStatus().then(setIntegrations).catch(() => setIntegrations([]));
+    void fetchMerchantIntegrationStatus()
+      .then(setIntegrations)
+      .catch(() => setIntegrations([]));
   }, [sessionTick]);
 
   const integrationByPlatform = (platform: IntegrationPlatform): IntegrationStatusDto | undefined =>

@@ -99,8 +99,7 @@ export function createApp(options: CreateAppOptions = {}) {
 
   app.use(express.json({ limit: '256kb' }));
 
-  const credentialRepository =
-    options.credentialRepository ?? buildDefaultCredentialRepository();
+  const credentialRepository = options.credentialRepository ?? buildDefaultCredentialRepository();
 
   const resolvePaymentGateway: PaymentGatewayResolver =
     options.resolvePaymentGateway ??
@@ -123,8 +122,7 @@ export function createApp(options: CreateAppOptions = {}) {
 
   const paymentLinkStore = options.paymentLinkStore ?? new PrismaPaymentLinkStore(prisma);
 
-  const subscriptionStore =
-    options.subscriptionStore ?? new PrismaSubscriptionStore(prisma);
+  const subscriptionStore = options.subscriptionStore ?? new PrismaSubscriptionStore(prisma);
 
   const idempotencyStore = options.idempotencyStore ?? new PrismaIdempotencyStore(prisma);
 
@@ -183,11 +181,7 @@ export function createApp(options: CreateAppOptions = {}) {
     createSubscriptionsRouter(subscriptionStore, resolvePaymentGateway),
   );
 
-  app.use(
-    '/api/v1/merchant/api-keys',
-    requireDashboardAuth,
-    createMerchantApiKeysRouter(),
-  );
+  app.use('/api/v1/merchant/api-keys', requireDashboardAuth, createMerchantApiKeysRouter());
 
   app.use(
     '/api/v1/merchant/integrations',

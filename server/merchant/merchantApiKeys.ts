@@ -2,10 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 
 import type { PrismaClient } from '@prisma/client';
 
-import {
-  newMerchantApiKeyPublicId,
-  newMerchantApiKeySecret,
-} from '../catalog/catalogIds';
+import { newMerchantApiKeyPublicId, newMerchantApiKeySecret } from '../catalog/catalogIds';
 
 export type MerchantApiKeySummary = {
   keyPublicId: string;

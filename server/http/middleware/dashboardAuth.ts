@@ -6,7 +6,11 @@ import type { DashboardRequest } from '../../merchant/merchantScope';
 /**
  * Autenticação do painel do lojista: token administrativo legado ou JWT de sessão merchant.
  */
-export function requireDashboardAuth(req: DashboardRequest, res: Response, next: NextFunction): void {
+export function requireDashboardAuth(
+  req: DashboardRequest,
+  res: Response,
+  next: NextFunction,
+): void {
   const adminToken = process.env.ADMIN_API_TOKEN?.trim();
   const jwtSecret = process.env.JWT_SECRET?.trim();
 

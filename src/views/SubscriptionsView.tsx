@@ -205,7 +205,9 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     <h3 className="font-title-md text-title-md font-bold text-on-surface mt-2">
                       {plan.planTitle}
                     </h3>
-                    <p className="font-body-sm text-on-surface-variant mt-0.5">{plan.cadenceLabel}</p>
+                    <p className="font-body-sm text-on-surface-variant mt-0.5">
+                      {plan.cadenceLabel}
+                    </p>
 
                     <div className="mt-4 p-3 bg-surface-container-low rounded-lg border border-surface-container/60 space-y-1">
                       <div className="flex justify-between text-body-sm">
@@ -323,8 +325,13 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     const label = statusLabel(sub.status);
                     const isOverdue = sub.status === 'OVERDUE';
                     return (
-                      <tr key={sub.subscriptionPublicId} className="hover:bg-surface-container-low/50">
-                        <td className="py-3 px-4 font-semibold text-on-surface">{sub.customerName}</td>
+                      <tr
+                        key={sub.subscriptionPublicId}
+                        className="hover:bg-surface-container-low/50"
+                      >
+                        <td className="py-3 px-4 font-semibold text-on-surface">
+                          {sub.customerName}
+                        </td>
                         <td className="py-3 px-4 text-on-surface-variant">{sub.planTitle}</td>
                         <td className="py-3 px-4 text-on-surface-variant">{sub.paymentMethod}</td>
                         <td

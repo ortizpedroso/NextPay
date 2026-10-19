@@ -18,12 +18,7 @@ import { QrPixModal } from './components/modals/QrPixModal';
 import { WithdrawModal } from './components/modals/WithdrawModal';
 import { ReceiptModal } from './components/modals/ReceiptModal';
 import { NewChargeModal } from './components/modals/NewChargeModal';
-import {
-  ProductItem,
-  PaymentLink,
-  Transaction,
-  type ClientRow,
-} from './data/mockData';
+import { ProductItem, PaymentLink, Transaction, type ClientRow } from './data/mockData';
 import {
   createCatalogProduct,
   createPaymentLink,
@@ -33,10 +28,7 @@ import {
   fetchPaymentLinks,
   updateCatalogProduct,
 } from './lib/api/adminOperations';
-import {
-  fetchDashboardMetrics,
-  type DashboardMetricsDto,
-} from './lib/api/adminDashboard';
+import { fetchDashboardMetrics, type DashboardMetricsDto } from './lib/api/adminDashboard';
 import { catalogProductToItem, paymentLinkDtoToItem } from './lib/api/catalogMappers';
 import {
   ledgerRowToTransaction,
@@ -288,9 +280,7 @@ export default function App() {
     }
     const updated = await updateCatalogProduct(productPublicId, { priceCents });
     setProducts((prev) =>
-      prev.map((item) =>
-        item.id === productPublicId ? catalogProductToItem(updated) : item,
-      ),
+      prev.map((item) => (item.id === productPublicId ? catalogProductToItem(updated) : item)),
     );
   };
 

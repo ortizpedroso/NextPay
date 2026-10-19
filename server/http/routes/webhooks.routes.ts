@@ -82,8 +82,7 @@ export function createWebhooksRouter(
 
         if (CONFIRMED_STATUSES.has(normalized.status)) {
           const session =
-            existingSession ??
-            (await checkoutStore?.getByPaymentId(normalized.paymentId));
+            existingSession ?? (await checkoutStore?.getByPaymentId(normalized.paymentId));
           const amountCents = normalized.amountCents ?? session?.amountCents ?? 0;
           if (session?.paymentLinkPublicId && amountCents > 0) {
             await paymentLinkStore?.recordConfirmedSale(session.paymentLinkPublicId, amountCents);

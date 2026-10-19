@@ -1,9 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 
-import {
-  newSubscriptionCyclePublicId,
-  newSubscriptionPublicId,
-} from '../catalog/catalogIds';
+import { newSubscriptionCyclePublicId, newSubscriptionPublicId } from '../catalog/catalogIds';
 import type {
   SubscriptionCycleRecord,
   SubscriptionMetrics,
@@ -216,7 +213,10 @@ export class PrismaSubscriptionStore implements SubscriptionStore {
     return mapSubscription(row);
   }
 
-  async cancel(subscriptionPublicId: string, merchantDbId?: string): Promise<SubscriptionRecord | null> {
+  async cancel(
+    subscriptionPublicId: string,
+    merchantDbId?: string,
+  ): Promise<SubscriptionRecord | null> {
     return this.update(subscriptionPublicId, { status: 'CANCELED' }, merchantDbId);
   }
 
@@ -459,7 +459,10 @@ export class InMemorySubscriptionStore implements SubscriptionStore {
     return this.getByPublicId(subscriptionPublicId, merchantDbId);
   }
 
-  async cancel(subscriptionPublicId: string, merchantDbId?: string): Promise<SubscriptionRecord | null> {
+  async cancel(
+    subscriptionPublicId: string,
+    merchantDbId?: string,
+  ): Promise<SubscriptionRecord | null> {
     return this.update(subscriptionPublicId, { status: 'CANCELED' }, merchantDbId);
   }
 

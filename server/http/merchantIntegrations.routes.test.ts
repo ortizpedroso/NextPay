@@ -58,8 +58,8 @@ describe('Merchant integrations & API keys (phase 5)', () => {
     expect(res.body.integrations).toHaveLength(3);
     const platforms = res.body.integrations.map((row: { platform: string }) => row.platform);
     expect(platforms).toEqual(expect.arrayContaining(['woocommerce', 'shopify', 'nuvemshop']));
-    expect(res.body.integrations.every((row: { status: string }) => row.status !== 'CONNECTED')).toBe(
-      true,
-    );
+    expect(
+      res.body.integrations.every((row: { status: string }) => row.status !== 'CONNECTED'),
+    ).toBe(true);
   });
 });
