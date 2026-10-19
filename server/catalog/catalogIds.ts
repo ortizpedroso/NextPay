@@ -8,6 +8,22 @@ export function newPaymentLinkPublicId(): string {
   return `np_link_${randomBytes(10).toString('hex')}`;
 }
 
+export function newSubscriptionPublicId(): string {
+  return `np_sub_${randomBytes(10).toString('hex')}`;
+}
+
+export function newSubscriptionCyclePublicId(): string {
+  return `np_sub_cyc_${randomBytes(8).toString('hex')}`;
+}
+
+export function newMerchantApiKeySecret(): string {
+  return `np_sec_${randomBytes(24).toString('hex')}`;
+}
+
+export function newMerchantApiKeyPublicId(): string {
+  return `np_key_${randomBytes(10).toString('hex')}`;
+}
+
 export function slugifyTitle(title: string): string {
   const base = title
     .normalize('NFD')

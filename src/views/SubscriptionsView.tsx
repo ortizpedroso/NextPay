@@ -1,8 +1,40 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+
+import { formatBRL } from '../lib/format';
+import { hasDashboardSession } from '../lib/api/dashboardAuth';
+import {
+  fetchSubscriptionMetrics,
+  fetchSubscriptionPlans,
+  fetchSubscriptions,
+  type SubscriptionDto,
+  type SubscriptionMetricsDto,
+  type SubscriptionPlanSummaryDto,
+} from '../lib/api/subscriptions';
 
 interface SubscriptionsViewProps {
   onShowToast: (msg: string) => void;
   onNavigate: (view: string) => void;
+}
+
+function formatBillingDate(iso: string, status: SubscriptionDto['status']): string {
+  if (status === 'OVERDUE') {
+    return 'Atrasado';
+  }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return '—';
+  }
+  return date.toLocaleDateString('pt-BR');
+}
+
+function statusLabel(status: SubscriptionDto['status']): string {
+  if (status === 'ACTIVE') {
+    return 'Ativa';
+  }
+  if (status === 'OVERDUE') {
+    return 'Pendente';
+  }
+  return 'Cancelada';
 }
 
 export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
@@ -10,87 +42,62 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
   onNavigate,
 }) => {
   const [filterState, setFilterState] = useState<'all' | 'active' | 'overdue'>('all');
+  const [plans, setPlans] = useState<SubscriptionPlanSummaryDto[]>([]);
+  const [subscribers, setSubscribers] = useState<SubscriptionDto[]>([]);
+  const [metrics, setMetrics] = useState<SubscriptionMetricsDto | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const subscriptionPlans = [
-    {
-      id: 'sub-1',
-      title: 'Mentoria & Acompanhamento Trimestral',
-      cadence: 'Trimestral (Cobrança a cada 3 meses)',
-      price: 'R$ 380,00/mês',
-      activeSubscribers: 39,
-      mrr: 'R$ 14.820,00',
-      churnRate: '1.2%',
-    },
-    {
-      id: 'sub-2',
-      title: 'Consultoria Design UX/UI Contínua',
-      cadence: 'Mensal (Renovação automática no cartão)',
-      price: 'R$ 1.500,00/mês',
-      activeSubscribers: 14,
-      mrr: 'R$ 21.000,00',
-      churnRate: '0.0%',
-    },
-    {
-      id: 'sub-3',
-      title: 'Suporte & Manutenção Cloud / Servidor',
-      cadence: 'Mensal com Débito Automático',
-      price: 'R$ 850,00/mês',
-      activeSubscribers: 8,
-      mrr: 'R$ 6.800,00',
-      churnRate: '2.5%',
-    },
-  ];
+  const reload = useCallback(async () => {
+    if (!hasDashboardSession()) {
+      setPlans([]);
+      setSubscribers([]);
+      setMetrics(null);
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const [planRows, subscriptionRows, metricRows] = await Promise.all([
+        fetchSubscriptionPlans(),
+        fetchSubscriptions(),
+        fetchSubscriptionMetrics(),
+      ]);
+      setPlans(planRows);
+      setSubscribers(subscriptionRows);
+      setMetrics(metricRows);
+    } catch (error) {
+      onShowToast(error instanceof Error ? error.message : 'Erro ao carregar assinaturas.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [onShowToast]);
 
-  const subscribers = [
-    {
-      id: 'usr-1',
-      name: 'Mariana Albuquerque',
-      plan: 'Consultoria UX/UI Contínua',
-      method: 'Cartão de Crédito',
-      status: 'Ativa',
-      nextBilling: '18/10/2026',
-      totalPaid: 'R$ 9.000,00',
-    },
-    {
-      id: 'usr-2',
-      name: 'Lucas Oliveira • Studio',
-      plan: 'Suporte & Manutenção Cloud',
-      method: 'Boleto Recorrente',
-      status: 'Ativa',
-      nextBilling: '22/10/2026',
-      totalPaid: 'R$ 5.100,00',
-    },
-    {
-      id: 'usr-3',
-      name: 'TechVenture Capital',
-      plan: 'Mentoria & Acompanhamento Trimestral',
-      method: 'Cartão de Crédito',
-      status: 'Ativa',
-      nextBilling: '04/11/2026',
-      totalPaid: 'R$ 4.560,00',
-    },
-    {
-      id: 'usr-4',
-      name: 'Agência Polaris Mídia',
-      plan: 'Consultoria UX/UI Contínua',
-      method: 'Boleto CIP',
-      status: 'Pendente',
-      nextBilling: 'Atrasado (3 dias)',
-      totalPaid: 'R$ 3.000,00',
-    },
-  ];
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
-  const filteredSubscribers = subscribers.filter((sub) => {
-    if (filterState === 'all') return true;
-    if (filterState === 'active') return sub.status === 'Ativa';
-    if (filterState === 'overdue') return sub.status === 'Pendente';
-    return true;
-  });
+  const filteredSubscribers = useMemo(() => {
+    return subscribers.filter((sub) => {
+      if (filterState === 'all') {
+        return sub.status !== 'CANCELED';
+      }
+      if (filterState === 'active') {
+        return sub.status === 'ACTIVE';
+      }
+      if (filterState === 'overdue') {
+        return sub.status === 'OVERDUE';
+      }
+      return true;
+    });
+  }, [subscribers, filterState]);
+
+  const activeCount = metrics?.activeSubscribers ?? 0;
+  const overdueCount = metrics?.overdueSubscribers ?? 0;
+  const mrrCents = metrics?.mrrCents ?? 0;
+  const retention = metrics?.retentionPercent ?? 100;
 
   return (
     <div className="flex flex-col w-full">
       <div className="p-4 lg:p-space-lg space-y-space-lg max-w-[1540px] mx-auto w-full">
-        {/* Top Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
           <div>
             <div className="flex items-center gap-space-xs">
@@ -122,18 +129,16 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
           </div>
         </div>
 
-        {/* 4 Metrics Strip */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-space-md">
           <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container/60">
             <span className="font-label-sm text-label-sm text-outline uppercase tracking-wider font-semibold">
               MRR Ativo (Mensal)
             </span>
             <div className="font-numeric-lg text-numeric-lg text-on-surface mt-1 font-bold">
-              R$ 42.620,00
+              {formatBRL(mrrCents)}
             </div>
             <span className="font-body-sm text-secondary flex items-center gap-1 mt-0.5 font-medium">
-              <span className="material-symbols-outlined text-[14px]">trending_up</span> +8.5% este
-              mês
+              {isLoading ? 'Atualizando…' : 'Dados do painel'}
             </span>
           </div>
 
@@ -142,10 +147,10 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
               Assinantes Ativos
             </span>
             <div className="font-numeric-lg text-numeric-lg text-on-surface mt-1 font-bold">
-              61 clientes
+              {activeCount} clientes
             </div>
             <span className="font-body-sm text-on-surface-variant mt-0.5 block">
-              100% com renovação automática
+              {overdueCount > 0 ? `${overdueCount} inadimplente(s)` : 'Renovação automática'}
             </span>
           </div>
 
@@ -154,10 +159,10 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
               Taxa de Retenção
             </span>
             <div className="font-numeric-lg text-numeric-lg text-secondary mt-1 font-bold">
-              98.8%
+              {retention.toFixed(1)}%
             </div>
             <span className="font-body-sm text-secondary mt-0.5 block font-medium">
-              Churn extremamente baixo (1.2%)
+              Com base nas assinaturas cadastradas
             </span>
           </div>
 
@@ -169,84 +174,81 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
               Automático
             </div>
             <span className="font-body-sm text-outline mt-0.5 block">
-              Retentativas inteligentes de saldo
+              Job `process-renewals` (API)
             </span>
           </div>
         </div>
 
-        {/* Plans Grid */}
         <div className="space-y-space-sm">
           <h2 className="font-headline-sm text-headline-sm text-on-surface">Planos Ativos</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-space-md">
-            {subscriptionPlans.map((plan) => (
-              <div
-                key={plan.id}
-                className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container/60 flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow"
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-semibold uppercase">
-                      Recorrência
-                    </span>
-                    <span className="text-secondary font-label-sm text-xs font-semibold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span> Ativo
-                    </span>
-                  </div>
-                  <h3 className="font-title-md text-title-md font-bold text-on-surface mt-2">
-                    {plan.title}
-                  </h3>
-                  <p className="font-body-sm text-on-surface-variant mt-0.5">{plan.cadence}</p>
-
-                  <div className="mt-4 p-3 bg-surface-container-low rounded-lg border border-surface-container/60 space-y-1">
-                    <div className="flex justify-between text-body-sm">
-                      <span className="text-on-surface-variant">Valor:</span>
-                      <span className="font-bold text-on-surface">{plan.price}</span>
-                    </div>
-                    <div className="flex justify-between text-body-sm">
-                      <span className="text-on-surface-variant">Assinantes:</span>
-                      <span className="font-bold text-secondary">
-                        {plan.activeSubscribers} ativos
+          {plans.length === 0 ? (
+            <p className="font-body-sm text-on-surface-variant">
+              Nenhum plano com assinantes ainda. Cadastre produtos recorrentes e assinaturas pela
+              API.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+              {plans.map((plan) => (
+                <div
+                  key={`${plan.productPublicId ?? 'plan'}:${plan.planTitle}`}
+                  className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm border border-surface-container/60 flex flex-col justify-between space-y-4 hover:shadow-md transition-shadow"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-semibold uppercase">
+                        Recorrência
+                      </span>
+                      <span className="text-secondary font-label-sm text-xs font-semibold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span> Ativo
                       </span>
                     </div>
-                    <div className="flex justify-between text-body-sm">
-                      <span className="text-on-surface-variant">MRR Total:</span>
-                      <span className="font-bold text-primary">{plan.mrr}</span>
+                    <h3 className="font-title-md text-title-md font-bold text-on-surface mt-2">
+                      {plan.planTitle}
+                    </h3>
+                    <p className="font-body-sm text-on-surface-variant mt-0.5">{plan.cadenceLabel}</p>
+
+                    <div className="mt-4 p-3 bg-surface-container-low rounded-lg border border-surface-container/60 space-y-1">
+                      <div className="flex justify-between text-body-sm">
+                        <span className="text-on-surface-variant">Valor:</span>
+                        <span className="font-bold text-on-surface">
+                          {formatBRL(plan.priceCents)}/mês
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-body-sm">
+                        <span className="text-on-surface-variant">Assinantes:</span>
+                        <span className="font-bold text-secondary">
+                          {plan.activeSubscribers} ativos
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-body-sm">
+                        <span className="text-on-surface-variant">MRR Total:</span>
+                        <span className="font-bold text-primary">{formatBRL(plan.mrrCents)}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex gap-2 pt-2 border-t border-surface-container/60">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (navigator.clipboard) {
-                        navigator.clipboard.writeText(`https://nextpay.link/assinatura/${plan.id}`);
-                      }
-                      onShowToast(`Link da assinatura "${plan.title}" copiado!`);
-                    }}
-                    className="flex-1 py-1.5 bg-primary text-on-primary rounded-lg text-xs font-semibold hover:bg-primary-container transition-colors flex items-center justify-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-[14px]">link</span>
-                    <span>Copiar Link</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    title="Em breve"
-                    className="px-2.5 py-1.5 bg-surface-container text-on-surface-variant/60 cursor-not-allowed rounded-lg text-xs font-semibold flex items-center gap-1"
-                  >
-                    <span>Gerenciar</span>
-                    <span className="text-[9px] uppercase px-1 rounded bg-surface-container-highest text-outline">
-                      Em breve
-                    </span>
-                  </button>
+                  <div className="flex gap-2 pt-2 border-t border-surface-container/60">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const slug = plan.productPublicId ?? plan.planTitle;
+                        if (navigator.clipboard) {
+                          navigator.clipboard.writeText(`https://nextpay.link/assinatura/${slug}`);
+                        }
+                        onShowToast(`Link da assinatura "${plan.planTitle}" copiado!`);
+                      }}
+                      className="flex-1 py-1.5 bg-primary text-on-primary rounded-lg text-xs font-semibold hover:bg-primary-container transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">link</span>
+                      <span>Copiar Link</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Subscribers Table */}
         <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-surface-container/60 overflow-hidden space-y-4 p-space-md">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
@@ -268,7 +270,7 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                     : 'text-on-surface-variant'
                 }`}
               >
-                Todos (61)
+                Todos ({activeCount + overdueCount})
               </button>
               <button
                 type="button"
@@ -305,53 +307,56 @@ export const SubscriptionsView: React.FC<SubscriptionsViewProps> = ({
                   <th className="py-3 px-4 font-semibold">Próxima Renovação</th>
                   <th className="py-3 px-4 font-semibold text-right">Total Acumulado</th>
                   <th className="py-3 px-4 font-semibold text-center">Status</th>
-                  <th className="py-3 px-4 font-semibold text-right">Ação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-container">
-                {filteredSubscribers.map((sub) => (
-                  <tr key={sub.id} className="hover:bg-surface-container-low/50">
-                    <td className="py-3 px-4 font-semibold text-on-surface">{sub.name}</td>
-                    <td className="py-3 px-4 text-on-surface-variant">{sub.plan}</td>
-                    <td className="py-3 px-4 text-on-surface-variant">{sub.method}</td>
-                    <td
-                      className={`py-3 px-4 font-medium ${
-                        sub.status === 'Pendente' ? 'text-error' : 'text-on-surface'
-                      }`}
-                    >
-                      {sub.nextBilling}
-                    </td>
-                    <td className="py-3 px-4 text-right font-numeric-md font-bold text-on-surface">
-                      {sub.totalPaid}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase ${
-                          sub.status === 'Ativa'
-                            ? 'bg-secondary-container text-on-secondary-container'
-                            : 'bg-error-container text-on-error-container'
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            sub.status === 'Ativa' ? 'bg-secondary' : 'bg-error animate-pulse'
-                          }`}
-                        ></span>
-                        {sub.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        type="button"
-                        disabled
-                        title="Em breve"
-                        className="text-xs text-on-surface-variant/50 cursor-not-allowed font-medium"
-                      >
-                        Em breve
-                      </button>
+                {filteredSubscribers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-6 text-center text-on-surface-variant">
+                      {hasDashboardSession()
+                        ? 'Nenhuma assinatura cadastrada.'
+                        : 'Faça login para ver assinaturas.'}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredSubscribers.map((sub) => {
+                    const label = statusLabel(sub.status);
+                    const isOverdue = sub.status === 'OVERDUE';
+                    return (
+                      <tr key={sub.subscriptionPublicId} className="hover:bg-surface-container-low/50">
+                        <td className="py-3 px-4 font-semibold text-on-surface">{sub.customerName}</td>
+                        <td className="py-3 px-4 text-on-surface-variant">{sub.planTitle}</td>
+                        <td className="py-3 px-4 text-on-surface-variant">{sub.paymentMethod}</td>
+                        <td
+                          className={`py-3 px-4 font-medium ${
+                            isOverdue ? 'text-error' : 'text-on-surface'
+                          }`}
+                        >
+                          {formatBillingDate(sub.nextBillingAt, sub.status)}
+                        </td>
+                        <td className="py-3 px-4 text-right font-numeric-md font-bold text-on-surface">
+                          {formatBRL(sub.totalPaidCents)}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase ${
+                              sub.status === 'ACTIVE'
+                                ? 'bg-secondary-container text-on-secondary-container'
+                                : 'bg-error-container text-on-error-container'
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                sub.status === 'ACTIVE' ? 'bg-secondary' : 'bg-error animate-pulse'
+                              }`}
+                            ></span>
+                            {label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

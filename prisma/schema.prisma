@@ -27,6 +27,9 @@ model Merchant {
   merchantCustomers  MerchantCustomer[]
   ledgerTransactions LedgerTransaction[]
   checkoutSessions   CheckoutSession[]
+  subscriptions      Subscription[]
+  merchantApiKeys    MerchantApiKey[]
+  integrations       MerchantIntegration[]
 }
 
 /// Usuário de painel vinculado a um lojista.
@@ -147,12 +150,89 @@ model LedgerTransaction {
 }
 
 model OutboundWebhookDelivery {
-  id          String   @id @default(cuid())
-  targetUrl   String   @db.VarChar(500)
-  eventType   String   @db.VarChar(64)
-  payloadJson String   @db.Text
-  status      String   @db.VarChar(32)
-  createdAt   DateTime @default(now())
+  id           String    @id @default(cuid())
+  targetUrl    String    @db.VarChar(500)
+  eventType    String    @db.VarChar(64)
+  payloadJson  String    @db.Text
+  status       String    @db.VarChar(32)
+  attemptCount Int       @default(0)
+  maxAttempts  Int       @default(5)
+  nextRetryAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([status, nextRetryAt])
+}
+
+/// Assinatura recorrente de um cliente (enrollment).
+model Subscription {
+  id                   String   @id @default(cuid())
+  merchantId           String
+  merchant             Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  subscriptionPublicId String   @unique @db.VarChar(80)
+  productPublicId      String?  @db.VarChar(80)
+  planTitle            String   @db.VarChar(200)
+  priceCents           Int
+  cadenceLabel         String   @db.VarChar(128)
+  customerName         String   @db.VarChar(140)
+  customerEmail        String   @db.VarChar(180)
+  paymentMethod        String   @db.VarChar(64)
+  status               String   @default("ACTIVE") @db.VarChar(32)
+  nextBillingAt        DateTime
+  totalPaidCents       Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  cycles SubscriptionCycle[]
+
+  @@index([merchantId])
+  @@index([merchantId, status])
+}
+
+/// Ciclo de cobrança de uma assinatura.
+model SubscriptionCycle {
+  id               String       @id @default(cuid())
+  subscriptionId   String
+  subscription     Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  cyclePublicId    String       @unique @db.VarChar(80)
+  dueAt            DateTime
+  amountCents      Int
+  status           String       @default("PENDING") @db.VarChar(32)
+  neutralPaymentId String?      @db.VarChar(80)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([subscriptionId])
+  @@index([dueAt, status])
+}
+
+/// Chave de API do lojista (np_sec_*); hash armazenado, plaintext exibido apenas na criação/rotação.
+model MerchantApiKey {
+  id          String    @id @default(cuid())
+  merchantId  String
+  merchant    Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  keyPublicId String    @unique @db.VarChar(80)
+  prefixHint  String    @db.VarChar(24)
+  suffixHint  String    @db.VarChar(8)
+  keyHash     String    @db.VarChar(128)
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  @@index([merchantId])
+}
+
+/// Estado de conectores e-commerce por lojista.
+model MerchantIntegration {
+  id          String    @id @default(cuid())
+  merchantId  String
+  merchant    Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  platform    String    @db.VarChar(32)
+  status      String    @default("DISCONNECTED") @db.VarChar(32)
+  connectedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([merchantId, platform])
+  @@index([merchantId])
 }
 
 /// Item do catálogo do lojista (produto, serviço ou plano recorrente).

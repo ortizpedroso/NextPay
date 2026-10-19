@@ -39,6 +39,14 @@ import { createPublicPaymentLinksRouter } from './http/routes/publicPaymentLinks
 import { createTransactionsRouter } from './http/routes/transactions.routes';
 import { createWebhooksRouter } from './http/routes/webhooks.routes';
 import { createWithdrawalsRouter } from './http/routes/withdrawals.routes';
+import { createSubscriptionsRouter } from './http/routes/subscriptions.routes';
+import {
+  InMemorySubscriptionStore,
+  PrismaSubscriptionStore,
+} from './subscriptions/subscriptionStore';
+import type { SubscriptionStore } from './subscriptions/subscriptionStore';
+import { createMerchantApiKeysRouter } from './http/routes/merchantApiKeys.routes';
+import { createMerchantIntegrationsRouter } from './http/routes/merchantIntegrations.routes';
 import { InMemoryLedgerStore, PrismaLedgerStore } from './payments/ledgerStore';
 import type { LedgerStore } from './payments/ledgerStore';
 import {
@@ -67,6 +75,7 @@ export type CreateAppOptions = {
   outboundWebhookService?: OutboundWebhookService;
   catalogProductStore?: CatalogProductStore;
   paymentLinkStore?: PaymentLinkStore;
+  subscriptionStore?: SubscriptionStore;
 };
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -113,6 +122,9 @@ export function createApp(options: CreateAppOptions = {}) {
   const catalogProductStore = options.catalogProductStore ?? new PrismaCatalogProductStore(prisma);
 
   const paymentLinkStore = options.paymentLinkStore ?? new PrismaPaymentLinkStore(prisma);
+
+  const subscriptionStore =
+    options.subscriptionStore ?? new PrismaSubscriptionStore(prisma);
 
   const idempotencyStore = options.idempotencyStore ?? new PrismaIdempotencyStore(prisma);
 
@@ -166,6 +178,24 @@ export function createApp(options: CreateAppOptions = {}) {
   app.use('/api/v1/admin/dashboard', requireDashboardAuth, createAdminDashboardRouter(prisma));
 
   app.use(
+    '/api/v1/subscriptions',
+    requireDashboardAuth,
+    createSubscriptionsRouter(subscriptionStore, resolvePaymentGateway),
+  );
+
+  app.use(
+    '/api/v1/merchant/api-keys',
+    requireDashboardAuth,
+    createMerchantApiKeysRouter(),
+  );
+
+  app.use(
+    '/api/v1/merchant/integrations',
+    requireDashboardAuth,
+    createMerchantIntegrationsRouter(),
+  );
+
+  app.use(
     '/api/v1/merchant',
     requireMerchantApiKey,
     createMerchantRouter(catalogProductStore, paymentLinkStore),
@@ -212,4 +242,5 @@ export {
   InMemoryPaymentLinkStore,
   InMemoryOutboundWebhookService,
   NoopOutboundWebhookService,
+  InMemorySubscriptionStore,
 };
