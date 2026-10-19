@@ -69,6 +69,14 @@ Com `NODE_ENV=production`, o Express serve o SPA em `dist/` na mesma porta (`POR
 
 ### 5. Banco de Dados (PostgreSQL)
 
+Suba o Postgres local (opcional):
+
+```bash
+docker compose up -d
+```
+
+Configure `DATABASE_URL=postgresql://nextpay:nextpay_local@localhost:5432/nextpay?schema=public` no `.env`, depois:
+
 ```bash
 npx prisma migrate deploy
 ```

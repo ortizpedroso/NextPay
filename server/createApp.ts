@@ -35,6 +35,7 @@ import { createProductsRouter, InMemoryCatalogProductStore } from './http/routes
 import type { CatalogProductStore } from './http/routes/products.routes';
 import { createPaymentsRouter, type PaymentGatewayResolver } from './http/routes/payments.routes';
 import { createAdminDashboardRouter } from './http/routes/adminDashboard.routes';
+import { createAdminMerchantsRouter } from './http/routes/adminMerchants.routes';
 import { createMerchantAuthRouter } from './http/routes/merchantAuth.routes';
 import { createPublicCheckoutRouter } from './http/routes/publicCheckout.routes';
 import { createPublicPaymentLinksRouter } from './http/routes/publicPaymentLinks.routes';
@@ -152,6 +153,8 @@ export function createApp(options: CreateAppOptions = {}) {
     requireAdminApiToken,
     createAdminCredentialsRouter(credentialRepository),
   );
+
+  app.use('/api/v1/admin/merchants', requireAdminApiToken, createAdminMerchantsRouter());
 
   app.use(
     '/api/v1/payments',
