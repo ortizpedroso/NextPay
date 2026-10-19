@@ -4,9 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryPaymentGateway } from '../gateway/adapters/in-memory-gateway.adapter';
 import {
   createApp,
+  InMemoryCatalogProductStore,
   InMemoryCheckoutSessionStore,
   InMemoryLedgerStore,
   InMemoryMerchantCustomerStore,
+  InMemoryPaymentLinkStore,
   NoopOutboundWebhookService,
 } from '../createApp';
 import { InMemoryWebhookEventStore } from '../payments/webhookEventStore';
@@ -42,6 +44,8 @@ describe('Phases 4-7 API', () => {
       ledgerStore: new InMemoryLedgerStore(),
       merchantCustomerStore: new InMemoryMerchantCustomerStore(),
       outboundWebhookService: new NoopOutboundWebhookService(),
+      catalogProductStore: new InMemoryCatalogProductStore(),
+      paymentLinkStore: new InMemoryPaymentLinkStore(),
     });
   }
 

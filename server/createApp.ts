@@ -15,7 +15,21 @@ import {
 } from './http/routes/adminCredentials.routes';
 import { createCustomersRouter, InMemoryMerchantCustomerStore } from './http/routes/customers.routes';
 import type { MerchantCustomerStore } from './http/routes/customers.routes';
+import {
+  PrismaCatalogProductStore,
+  PrismaPaymentLinkStore,
+} from './catalog/prismaCatalogStores';
 import { createMerchantRouter } from './http/routes/merchant.routes';
+import {
+  createPaymentLinksRouter,
+  InMemoryPaymentLinkStore,
+} from './http/routes/paymentLinks.routes';
+import type { PaymentLinkStore } from './http/routes/paymentLinks.routes';
+import {
+  createProductsRouter,
+  InMemoryCatalogProductStore,
+} from './http/routes/products.routes';
+import type { CatalogProductStore } from './http/routes/products.routes';
 import { createPaymentsRouter, type PaymentGatewayResolver } from './http/routes/payments.routes';
 import { createPublicCheckoutRouter } from './http/routes/publicCheckout.routes';
 import { createTransactionsRouter } from './http/routes/transactions.routes';
@@ -43,6 +57,8 @@ export type CreateAppOptions = {
   ledgerStore?: LedgerStore;
   merchantCustomerStore?: MerchantCustomerStore;
   outboundWebhookService?: OutboundWebhookService;
+  catalogProductStore?: CatalogProductStore;
+  paymentLinkStore?: PaymentLinkStore;
 };
 
 export function createApp(options: CreateAppOptions = {}) {
@@ -91,6 +107,12 @@ export function createApp(options: CreateAppOptions = {}) {
   const outboundWebhookService =
     options.outboundWebhookService ?? new PrismaOutboundWebhookService(prisma);
 
+  const catalogProductStore =
+    options.catalogProductStore ?? new PrismaCatalogProductStore(prisma);
+
+  const paymentLinkStore =
+    options.paymentLinkStore ?? new PrismaPaymentLinkStore(prisma);
+
   const idempotencyStore = options.idempotencyStore;
 
   app.get('/api/v1/health', (_req, res) => {
@@ -137,9 +159,21 @@ export function createApp(options: CreateAppOptions = {}) {
   );
 
   app.use(
+    '/api/v1/products',
+    requireAdminApiToken,
+    createProductsRouter(catalogProductStore),
+  );
+
+  app.use(
+    '/api/v1/payment-links',
+    requireAdminApiToken,
+    createPaymentLinksRouter(paymentLinkStore),
+  );
+
+  app.use(
     '/api/v1/merchant',
     requireMerchantApiKey,
-    createMerchantRouter(),
+    createMerchantRouter(catalogProductStore, paymentLinkStore),
   );
 
   app.use(
@@ -160,4 +194,11 @@ export function createApp(options: CreateAppOptions = {}) {
 }
 
 // exported for tests defaults
-export { InMemoryCheckoutSessionStore, InMemoryLedgerStore, InMemoryMerchantCustomerStore, NoopOutboundWebhookService };
+export {
+  InMemoryCatalogProductStore,
+  InMemoryCheckoutSessionStore,
+  InMemoryLedgerStore,
+  InMemoryMerchantCustomerStore,
+  InMemoryPaymentLinkStore,
+  NoopOutboundWebhookService,
+};

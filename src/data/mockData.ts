@@ -1,5 +1,6 @@
 export interface ProductItem {
   id: string;
+  checkoutUrl?: string;
   title: string;
   description: string;
   category: 'servicos' | 'digitais' | 'recorrentes' | 'projetos';

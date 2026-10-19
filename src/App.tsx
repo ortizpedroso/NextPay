@@ -29,14 +29,23 @@ import {
   type ClientRow,
 } from './data/mockData';
 import {
+  createCatalogProduct,
+  createPaymentLink,
+  fetchCatalogProducts,
   fetchLedgerTransactions,
   fetchMerchantCustomers,
+  fetchPaymentLinks,
 } from './lib/api/adminOperations';
+import {
+  catalogProductToItem,
+  paymentLinkDtoToItem,
+} from './lib/api/catalogMappers';
 import {
   ledgerRowToTransaction,
   merchantCustomerToClientRow,
   sumAvailableBalanceCents,
 } from './lib/api/ledgerMappers';
+import { parseBRLToCents } from './lib/format';
 import { getAdminBearerToken } from './lib/api/adminSession';
 
 export default function App() {
@@ -54,9 +63,11 @@ export default function App() {
     if (!getAdminBearerToken()) {
       return;
     }
-    const [ledgerRows, customerRows] = await Promise.all([
+    const [ledgerRows, customerRows, productRows, linkRows] = await Promise.all([
       fetchLedgerTransactions(),
       fetchMerchantCustomers(),
+      fetchCatalogProducts(),
+      fetchPaymentLinks(),
     ]);
     if (ledgerRows.length > 0) {
       setTransactions(ledgerRows.map(ledgerRowToTransaction));
@@ -65,6 +76,12 @@ export default function App() {
     if (customerRows.length > 0) {
       setClients(customerRows.map(merchantCustomerToClientRow));
     }
+    if (productRows.length > 0) {
+      setProducts(productRows.map(catalogProductToItem));
+    }
+    if (linkRows.length > 0) {
+      setPaymentLinks(linkRows.map(paymentLinkDtoToItem));
+    }
   }, []);
 
   useEffect(() => {
@@ -72,7 +89,14 @@ export default function App() {
   }, [refreshFromApi]);
 
   useEffect(() => {
-    if (currentView === 'dashboard' || currentView === 'clientes') {
+    if (
+      currentView === 'dashboard' ||
+      currentView === 'clientes' ||
+      currentView === 'produtos-e-servicos' ||
+      currentView === 'cobrancas-e-links' ||
+      currentView === 'links-pagamento' ||
+      currentView === 'pix'
+    ) {
       void refreshFromApi();
     }
   }, [currentView, refreshFromApi]);
@@ -115,12 +139,83 @@ export default function App() {
   };
 
   // Handlers
-  const handleAddProduct = (newProd: ProductItem) => {
-    setProducts([newProd, ...products]);
+  const handleAddProduct = async (input: {
+    title: string;
+    description: string;
+    category: ProductItem['category'];
+    billingType: ProductItem['billingType'];
+    priceBrlInput: string;
+    maxInstallments: number;
+    imageUrl?: string;
+  }) => {
+    const priceCents = parseBRLToCents(input.priceBrlInput.replace(/^R\$\s?/, ''));
+    if (getAdminBearerToken()) {
+      const created = await createCatalogProduct({
+        title: input.title,
+        description: input.description,
+        category: input.category,
+        billingType: input.billingType,
+        priceCents,
+        maxInstallments: input.maxInstallments,
+        imageUrl: input.imageUrl,
+      });
+      setProducts((prev) => [catalogProductToItem(created), ...prev]);
+      return;
+    }
+    const fallback: ProductItem = {
+      id: `prod-${Date.now()}`,
+      title: input.title,
+      description: input.description,
+      category: input.category,
+      categoryLabel: input.category,
+      price: priceCents / 100,
+      priceFormatted: `R$ ${input.priceBrlInput}`,
+      billingType: input.billingType,
+      installmentsText: `Até ${input.maxInstallments}x no cartão`,
+      imageUrl: input.imageUrl ?? '',
+      salesCount: 0,
+      statsText: 'Novo item • 0 vendas',
+    };
+    setProducts((prev) => [fallback, ...prev]);
   };
 
-  const handleAddPaymentLink = (newLink: PaymentLink) => {
-    setPaymentLinks([newLink, ...paymentLinks]);
+  const handleAddPaymentLink = async (input: {
+    title: string;
+    billingType: PaymentLink['type'];
+    amountBrlInput: string;
+    subtitle?: string;
+  }) => {
+    const amountCents = parseBRLToCents(input.amountBrlInput.replace(/^R\$\s?/, ''));
+    if (getAdminBearerToken()) {
+      const created = await createPaymentLink({
+        title: input.title,
+        billingType: input.billingType,
+        amountCents,
+        subtitle: input.subtitle,
+      });
+      setPaymentLinks((prev) => [paymentLinkDtoToItem(created), ...prev]);
+      return;
+    }
+    const cleanSlug = input.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-');
+    const fallback: PaymentLink = {
+      id: `link-${Date.now()}`,
+      title: input.title.trim(),
+      subtitle: input.subtitle ?? 'Pagamento via NextPay',
+      type: input.billingType,
+      typeLabel: input.billingType === 'recorrente' ? 'Recorrente Mensal' : 'Cobrança Avulsa',
+      status: 'Ativo',
+      unitPrice: amountCents / 100,
+      unitPriceFormatted: `R$ ${input.amountBrlInput}`,
+      totalBilledFormatted: 'R$ 0,00',
+      sales: 0,
+      views: 1,
+      conversionRate: '0.0%',
+      url: `https://nextpay.link/silva-design/${cleanSlug}`,
+    };
+    setPaymentLinks((prev) => [fallback, ...prev]);
   };
 
   const handleCreateCharge = (charge: {

@@ -4,7 +4,15 @@ import { ProductItem } from '../data/mockData';
 interface ProductDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveProduct: (newProduct: ProductItem) => void;
+  onSaveProduct: (input: {
+    title: string;
+    description: string;
+    category: ProductItem['category'];
+    billingType: ProductItem['billingType'];
+    priceBrlInput: string;
+    maxInstallments: number;
+    imageUrl?: string;
+  }) => void | Promise<void>;
   onShowToast: (msg: string) => void;
 }
 
@@ -33,42 +41,38 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
     projetos: 'Projeto Sob Medida',
   };
 
-  const getCleanPrice = () => {
-    const cleanStr = price.replace(/\./g, '').replace(',', '.').trim();
-    const num = parseFloat(cleanStr);
-    return isNaN(num) ? 0 : num;
+  const parseMaxInstallments = (): number => {
+    const match = installments.match(/^(\d+)/);
+    return match ? Number.parseInt(match[1], 10) : 12;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       onShowToast('Informe o título do item.');
       return;
     }
 
-    const numericPrice = getCleanPrice();
-    const newProduct: ProductItem = {
-      id: `prod-${Date.now()}`,
-      title: title.trim(),
-      description:
-        description.trim() || 'Descrição dos entregáveis e benefícios inclusos no pacote.',
-      category,
-      categoryLabel: categoryLabelMap[category],
-      price: numericPrice,
-      priceFormatted: `R$ ${price || '0,00'}${billingType === 'recorrente' ? '/mês' : ''}`,
-      billingType,
-      installmentsText:
-        billingType === 'recorrente' ? 'Débito recorrente mensal' : `Até ${installments} no cartão`,
-      imageUrl:
-        imageUrl.trim() ||
-        'https://lh3.googleusercontent.com/aida-public/AB6AXuBdOzWFlzQ-IwFq8v30Kx900QdiI2m6XjwECu_4wBONT6FbAStbJoGGNtNkwI8sab4pvYy4nS57KOIea5foq50ZI7EItbVhbrLP3nmZnhB-ES_c3yX2-DmRasBMcjm-YbnFKXUSxnh9_pmM2OnpClggsxKubahzxo9t-rDeHh_e5vEQ63qixUpkFHYrtetBY18wVCxMkm3k_GT0RFaTz1w3gcUN_hnr0tFtUveDpxiiKPQbJeAnB0M',
-      salesCount: 0,
-      statsText: 'Novo item • 0 vendas',
-    };
+    const resolvedImage =
+      imageUrl.trim() ||
+      'https://lh3.googleusercontent.com/aida-public/AB6AXuBdOzWFlzQ-IwFq8v30Kx900QdiI2m6XjwECu_4wBONT6FbAStbJoGGNtNkwI8sab4pvYy4nS57KOIea5foq50ZI7EItbVhbrLP3nmZnhB-ES_c3yX2-DmRasBMcjm-YbnFKXUSxnh9_pmM2OnpClggsxKubahzxo9t-rDeHh_e5vEQ63qixUpkFHYrtetBY18wVCxMkm3k_GT0RFaTz1w3gcUN_hnr0tFtUveDpxiiKPQbJeAnB0M';
 
-    onSaveProduct(newProduct);
-    onShowToast(`Item "${newProduct.title}" cadastrado e link de checkout ativo!`);
-    onClose();
+    try {
+      await onSaveProduct({
+        title: title.trim(),
+        description:
+          description.trim() || 'Descrição dos entregáveis e benefícios inclusos no pacote.',
+        category,
+        billingType,
+        priceBrlInput: price || '0,00',
+        maxInstallments: parseMaxInstallments(),
+        imageUrl: resolvedImage,
+      });
+      onShowToast(`Item "${title.trim()}" cadastrado e link de checkout ativo!`);
+      onClose();
+    } catch (error) {
+      onShowToast(error instanceof Error ? error.message : 'Falha ao salvar produto.');
+    }
   };
 
   return (

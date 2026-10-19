@@ -80,3 +80,98 @@ export async function fetchMerchantCustomers(): Promise<MerchantCustomerDto[]> {
   const json = (await response.json()) as { customers: MerchantCustomerDto[] };
   return json.customers;
 }
+
+export type CatalogProductDto = {
+  productPublicId: string;
+  urlSlug: string;
+  title: string;
+  description: string;
+  category: 'servicos' | 'digitais' | 'recorrentes' | 'projetos';
+  badge?: string | null;
+  priceCents: number;
+  billingType: 'avulsa' | 'recorrente';
+  recurrencyCycle?: string | null;
+  maxInstallments: number;
+  imageUrl: string;
+  salesCount: number;
+  status: string;
+  checkoutUrl: string;
+};
+
+export type PaymentLinkDto = {
+  linkPublicId: string;
+  urlSlug: string;
+  title: string;
+  subtitle: string;
+  billingType: 'avulsa' | 'recorrente';
+  status: 'ACTIVE' | 'PAUSED';
+  amountCents: number;
+  totalBilledCents: number;
+  salesCount: number;
+  viewCount: number;
+  expiresAt: string | null;
+  productPublicId: string | null;
+  checkoutUrl: string;
+};
+
+export async function fetchCatalogProducts(): Promise<CatalogProductDto[]> {
+  const response = await fetch('/api/v1/products', { headers: adminHeaders() });
+  if (!response.ok) {
+    return [];
+  }
+  const json = (await response.json()) as { products: CatalogProductDto[] };
+  return json.products;
+}
+
+export async function createCatalogProduct(input: {
+  title: string;
+  description?: string;
+  category: CatalogProductDto['category'];
+  priceCents: number;
+  billingType: CatalogProductDto['billingType'];
+  maxInstallments?: number;
+  imageUrl?: string;
+  badge?: string;
+}): Promise<CatalogProductDto> {
+  const response = await fetch('/api/v1/products', {
+    method: 'POST',
+    headers: adminHeaders(),
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? 'Falha ao cadastrar produto.');
+  }
+  const json = (await response.json()) as { product: CatalogProductDto };
+  return json.product;
+}
+
+export async function fetchPaymentLinks(): Promise<PaymentLinkDto[]> {
+  const response = await fetch('/api/v1/payment-links', { headers: adminHeaders() });
+  if (!response.ok) {
+    return [];
+  }
+  const json = (await response.json()) as { paymentLinks: PaymentLinkDto[] };
+  return json.paymentLinks;
+}
+
+export async function createPaymentLink(input: {
+  title: string;
+  subtitle?: string;
+  billingType: PaymentLinkDto['billingType'];
+  amountCents: number;
+  expiresAt?: string;
+  productPublicId?: string;
+}): Promise<PaymentLinkDto> {
+  const response = await fetch('/api/v1/payment-links', {
+    method: 'POST',
+    headers: adminHeaders(),
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? 'Falha ao criar link de pagamento.');
+  }
+  const json = (await response.json()) as { paymentLink: PaymentLinkDto };
+  return json.paymentLink;
+}

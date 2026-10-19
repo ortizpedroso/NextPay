@@ -4,7 +4,12 @@ import { PaymentLink, Transaction } from '../data/mockData';
 interface PaymentLinksViewProps {
   paymentLinks: PaymentLink[];
   transactions: Transaction[];
-  onAddPaymentLink: (newLink: PaymentLink) => void;
+  onAddPaymentLink: (input: {
+    title: string;
+    billingType: PaymentLink['type'];
+    amountBrlInput: string;
+    subtitle?: string;
+  }) => void | Promise<void>;
   onOpenQrPix: (title: string, price: string) => void;
   onOpenReceipt: (tx?: Transaction) => void;
   onOpenCheckoutWithLink: (link: PaymentLink) => void;
@@ -49,34 +54,26 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
     return link.type === linkFilter;
   });
 
-  const handleCreateLink = (e: React.FormEvent) => {
+  const handleCreateLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || numericAmount <= 0) {
       onShowToast('Informe o nome e valor da cobrança.');
       return;
     }
 
-    const cleanSlug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-');
-    const newLink: PaymentLink = {
-      id: `link-${Date.now()}`,
-      title: title.trim(),
-      subtitle: `${billingType === 'recorrente' ? 'Assinatura recorrente' : 'Pagamento único'} via Pix e Cartão`,
-      type: billingType,
-      typeLabel: billingType === 'recorrente' ? 'Recorrente Mensal' : 'Cobrança Avulsa',
-      status: 'Ativo',
-      unitPrice: numericAmount,
-      unitPriceFormatted: `R$ ${amount}${billingType === 'recorrente' ? '/mês' : ''}`,
-      totalBilledFormatted: 'R$ 0,00',
-      sales: 0,
-      views: 1,
-      conversionRate: '0.0%',
-      url: `https://nextpay.link/silva-design/${cleanSlug}`,
-    };
-
-    onAddPaymentLink(newLink);
+    try {
+      await onAddPaymentLink({
+        title: title.trim(),
+        billingType,
+        amountBrlInput: amount,
+        subtitle: `${billingType === 'recorrente' ? 'Assinatura recorrente' : 'Pagamento único'} via Pix e Cartão`,
+      });
+      onShowToast('Link de pagamento criado com sucesso!');
+      setTitle('');
+      setAmount('0,00');
+    } catch (error) {
+      onShowToast(error instanceof Error ? error.message : 'Falha ao criar link.');
+    }
   };
 
   const handleCopyLink = (url: string) => {
@@ -592,16 +589,11 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
               {/* Action Buttons */}
               <div className="pt-space-md flex flex-col sm:flex-row items-center gap-space-sm">
                 <button
-                  type="button"
-                  disabled
-                  title="Em breve (Fase 2)"
-                  className="w-full flex-1 flex items-center justify-center gap-space-xs bg-surface-container-high text-on-surface-variant/70 cursor-not-allowed px-space-lg py-space-md rounded-xl font-title-md text-title-md shadow-none opacity-80 font-semibold"
+                  type="submit"
+                  className="w-full flex-1 flex items-center justify-center gap-space-xs bg-primary text-on-primary hover:bg-primary-container px-space-lg py-space-md rounded-xl font-title-md text-title-md shadow-md font-semibold transition-colors"
                 >
                   <span className="material-symbols-outlined text-[20px]">bolt</span>
-                  <span>Gerar Link & Ativar Notificações</span>
-                  <span className="ml-1 text-[10px] font-bold uppercase bg-surface-container-highest px-1.5 py-0.5 rounded text-outline">
-                    Em breve
-                  </span>
+                  <span>Gerar Link de Pagamento</span>
                 </button>
                 <button
                   type="button"
